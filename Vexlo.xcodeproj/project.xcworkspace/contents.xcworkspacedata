@@ -4,4 +4,11 @@
    <FileRef
       location = "self:">
    </FileRef>
+   <Group
+      location = "group:VexloTests"
+      name = "VexloTests">
+      <FileRef
+         location = "group:CriticalPathRegressionTests.swift">
+      </FileRef>
+   </Group>
 </Workspace>

@@ -1,0 +1,73 @@
+"hud.best" = "BEST";
+"hud.today" = "TODAY";
+"hud.score" = "SCORE";
+"hud.title" = "VEXLO";
+"hud.main_run" = "Main Run";
+"hud.todays_challenge" = "Today's Challenge";
+"hud.todays_challenge_streak" = "Today's Challenge • %d";
+
+"overlay.game_over" = "Game Over";
+"overlay.daily_complete" = "Daily Complete";
+"overlay.game_center" = "Game Center";
+"overlay.leaderboard" = "Leaderboard";
+"overlay.supporter_pack" = "Supporter Pack";
+"overlay.restore_purchases" = "Restore Purchases";
+"overlay.export_diagnostics" = "Export Diagnostics";
+"overlay.continue_run" = "Continue Run";
+"overlay.play_again" = "Play Again";
+"overlay.best_today" = "Best Today";
+"overlay.new_best" = "New Best";
+"overlay.supporter_owned" = "Supporter Owned";
+"overlay.challenge_friends" = "Challenge Friends";
+"overlay.play_together" = "Play Together";
+"overlay.saved_for_next_run" = "Saved for the next run";
+"overlay.one_cleaner_run" = "One cleaner run does it";
+"overlay.streak_format" = "Streak %d";
+"overlay.gap_to_best" = "%d to best";
+
+"utility.sound_on" = "Sound On";
+"utility.sound_off" = "Sound Off";
+"utility.haptics_on" = "Haptics On";
+"utility.haptics_off" = "Haptics Off";
+
+"onboarding.drag_to_board" = "Drag a piece to the board";
+"onboarding.complete_line" = "Complete a line to clear";
+
+"accessibility.utility_menu" = "Utility";
+"accessibility.utility_menu_hint" = "Opens game controls";
+"accessibility.mode_switch_daily" = "Today's Challenge";
+"accessibility.mode_switch_daily_hint" = "Starts today's daily challenge";
+"accessibility.mode_switch_main" = "Main Run";
+"accessibility.mode_switch_main_hint" = "Returns to the main run";
+"accessibility.leaderboard" = "Leaderboard";
+"accessibility.leaderboard_hint" = "Shows Game Center scores";
+"accessibility.daily_activity" = "Daily Activity";
+"accessibility.daily_activity_hint" = "Opens today's Game Center activity";
+"accessibility.challenge_friends" = "Challenge Friends";
+"accessibility.challenge_friends_hint" = "Opens the Game Center challenge flow";
+"accessibility.play_together" = "Play Together";
+"accessibility.play_together_hint" = "Opens the Game Center activity";
+"accessibility.continue_run_hint" = "Watch a rewarded video to continue this run when available";
+"accessibility.play_again_hint" = "Starts a new run";
+"accessibility.supporter_pack_hint" = "Unlocks ad-free continue and reroll when available";
+"accessibility.restore_purchases_hint" = "Restores your previous purchase";
+"accessibility.export_diagnostics_hint" = "Shares a tester diagnostics snapshot";
+"accessibility.reroll_piece" = "Reroll Piece";
+"accessibility.reroll_piece_hint" = "Replaces this tray piece when a reroll is available";
+"accessibility.sound_state" = "Sound";
+"accessibility.haptics_state" = "Haptics";
+"accessibility.state_on" = "On";
+"accessibility.state_off" = "Off";
+"accessibility.game_over_summary" = "Run complete";
+"accessibility.daily_complete_summary" = "Daily challenge complete";
+
+"intent.start_today.title" = "Start Today's Challenge";
+"intent.start_today.description" = "Open Vexlo and jump straight into today's Daily Challenge.";
+"intent.start_today.dialog" = "Opening today's challenge.";
+"intent.start_today.short_title" = "Today's Challenge";
+
+"intent.resume.title" = "Resume Last Run";
+"intent.resume.description" = "Return to your current run when Vexlo still has a live, resumable board.";
+"intent.resume.dialog" = "Returning to your run.";
+"intent.resume.unavailable" = "No active run is available to resume.";
+"intent.resume.short_title" = "Resume Run";

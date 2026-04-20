@@ -1,0 +1,30 @@
+{
+  "configurations" : [
+    {
+      "id" : "7B634855-681B-49C3-939B-C7EC26363BE0",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Vexlo.xcodeproj",
+      "identifier" : "06B1A8BD2F9411630056949C",
+      "name" : "Vexlo"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Vexlo.xcodeproj",
+        "identifier" : "06B1A8D62F9411650056949C",
+        "name" : "VexloTests"
+      }
+    }
+  ],
+  "version" : 1
+}

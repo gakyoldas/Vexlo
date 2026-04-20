@@ -24,6 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		065660C32F96D7CA00744C34 /* Vexlo.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Vexlo.xctestplan; sourceTree = "<group>"; };
 		06B1A8BE2F9411630056949C /* Vexlo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vexlo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B1A8D72F9411650056949C /* VexloTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VexloTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B1A8E12F9411650056949C /* VexloUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VexloUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -48,14 +49,9 @@
 			path = Vexlo;
 			sourceTree = "<group>";
 		};
-		06B1A8DA2F9411650056949C /* VexloTests */ = {
+		F0A100012F00000100000001 /* VexloTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = VexloTests;
-			sourceTree = "<group>";
-		};
-		06B1A8E42F9411650056949C /* VexloUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = VexloUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -88,9 +84,9 @@
 		06B1A8B52F9411630056949C = {
 			isa = PBXGroup;
 			children = (
+				065660C32F96D7CA00744C34 /* Vexlo.xctestplan */,
 				06B1A8C02F9411630056949C /* Vexlo */,
-				06B1A8DA2F9411650056949C /* VexloTests */,
-				06B1A8E42F9411650056949C /* VexloUITests */,
+				F0A100012F00000100000001 /* VexloTests */,
 				06B1A8BF2F9411630056949C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -144,7 +140,7 @@
 				06B1A8D92F9411650056949C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				06B1A8DA2F9411650056949C /* VexloTests */,
+				F0A100012F00000100000001 /* VexloTests */,
 			);
 			name = VexloTests;
 			packageProductDependencies = (
@@ -165,9 +161,6 @@
 			);
 			dependencies = (
 				06B1A8E32F9411650056949C /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				06B1A8E42F9411650056949C /* VexloUITests */,
 			);
 			name = VexloUITests;
 			packageProductDependencies = (
@@ -287,16 +280,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Vexlo/Vexlo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T447J5CVBK;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Vexlo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vexlo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -319,16 +315,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Vexlo/Vexlo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T447J5CVBK;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Vexlo/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Vexlo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleLightContent;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

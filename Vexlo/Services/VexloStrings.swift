@@ -29,7 +29,6 @@ enum VexloStrings {
         static let supporterOwned = localized("overlay.supporter_owned", value: "Supporter Owned")
         static let challengeFriends = localized("overlay.challenge_friends", value: "Challenge Friends")
         static let playTogether = localized("overlay.play_together", value: "Play Together")
-        static let savedForNextRun = localized("overlay.saved_for_next_run", value: "")
         static let oneCleanerRun = localized("overlay.one_cleaner_run", value: "Tied Best")
 
         static func streak(_ value: Int) -> String {

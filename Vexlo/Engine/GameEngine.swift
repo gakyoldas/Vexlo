@@ -65,6 +65,7 @@ final class GameEngine: ObservableObject {
     private let cols: Int = 7
     private let rows: Int = 7
     private let slotCount: Int = 3
+    private var normalGenerator: PieceFactory.SeededGenerator?
     private var dailyGenerator: PieceFactory.SeededGenerator?
     private var generationMemory = PieceFactory.GenerationMemory()
 
@@ -188,11 +189,15 @@ final class GameEngine: ObservableObject {
             dailyGenerator = nil
             if let normalSeed {
                 var generator = PieceFactory.SeededGenerator(seed: normalSeed)
-                return PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator)
+                let batch = PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator)
+                normalGenerator = generator
+                return batch
             }
+            normalGenerator = nil
             var generator = SystemRandomNumberGenerator()
             return PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator)
         case let .daily(_, seed):
+            normalGenerator = nil
             var generator = PieceFactory.SeededGenerator(seed: seed)
             let batch = PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator)
             dailyGenerator = generator
@@ -203,6 +208,16 @@ final class GameEngine: ObservableObject {
     private func nextBatch() -> [HexPiece] {
         switch runMode {
         case .normal:
+            if var generator = normalGenerator {
+                let batch = PieceFactory.randomBatch(
+                    count: slotCount,
+                    occupiedCellCount: occupiedCellCount(),
+                    memory: &generationMemory,
+                    using: &generator
+                )
+                normalGenerator = generator
+                return batch
+            }
             var generator = SystemRandomNumberGenerator()
             return PieceFactory.randomBatch(
                 count: slotCount,
@@ -277,6 +292,7 @@ final class GameEngine: ObservableObject {
         maxCombo: Int
     ) {
         runMode = mode
+        normalGenerator = nil
         dailyGenerator = nil
         generationMemory = PieceFactory.GenerationMemory()
         board = HexBoard(cols: cols, rows: rows)
@@ -345,8 +361,10 @@ final class GameEngine: ObservableObject {
         generationMemory = PieceFactory.GenerationMemory(snapshot: snapshot.generationMemory)
         switch runMode {
         case .normal:
+            normalGenerator = nil
             dailyGenerator = nil
         case let .daily(_, seed):
+            normalGenerator = nil
             if let state = snapshot.dailyGeneratorState {
                 dailyGenerator = PieceFactory.SeededGenerator(stateSnapshot: state)
             } else {

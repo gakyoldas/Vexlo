@@ -165,6 +165,10 @@ final class GameScene: SKScene {
         !isOverlayPresented
     }
 
+    private var isPublicEditorialCapture: Bool {
+        LaunchSupport.shared.isCaptureMode && !LaunchSupport.shared.isInternalCapture
+    }
+
     private var canShowFirstSessionHintSurface: Bool {
         !LaunchSupport.shared.isCaptureMode &&
         !engine.isDailyChallenge &&
@@ -260,7 +264,7 @@ final class GameScene: SKScene {
         children.filter { $0.name?.hasPrefix("hud.") == true }.forEach { $0.removeFromParent() }
         let metrics = layoutMetrics
 
-        bestCaptionLabel = label(VexloStrings.HUD.best, size: 11, alpha: 0.31, align: .left)
+        bestCaptionLabel = label(VexloStrings.HUD.best, size: 10.5, alpha: 0.27, align: .left)
         bestCaptionLabel.name = "hud.bestCaption"
         bestCaptionLabel.position = CGPoint(x: metrics.sideInset, y: metrics.topY)
         addChild(bestCaptionLabel)
@@ -270,28 +274,28 @@ final class GameScene: SKScene {
         bestLabel.position = CGPoint(x: metrics.sideInset, y: metrics.topY - 20)
         addChild(bestLabel)
 
-        let title = label(VexloStrings.HUD.title, size: 17, color: UIColor(hex: "F4F3FF"), alpha: 0.93, align: .center, weight: true)
+        let title = label(VexloStrings.HUD.title, size: 18, color: UIColor(hex: "F4F3FF"), alpha: 0.95, align: .center, weight: true)
         title.name = "hud.title"
         title.position = CGPoint(x: size.width * 0.5, y: metrics.titleY)
         addChild(title)
 
-        let accent = SKShapeNode(rectOf: CGSize(width: size.height < 760 ? 22 : 26, height: 2), cornerRadius: 1)
+        let accent = SKShapeNode(rectOf: CGSize(width: size.height < 760 ? 24 : 29, height: 2), cornerRadius: 1)
         accent.name = "hud.titleAccent"
-        accent.fillColor = UIColor(hex: "7A74F7").withAlphaComponent(0.36)
-        accent.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.1)
+        accent.fillColor = UIColor(hex: "7A74F7").withAlphaComponent(0.3)
+        accent.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.08)
         accent.lineWidth = 1
         accent.position = CGPoint(x: size.width * 0.5, y: metrics.titleAccentY)
         addChild(accent)
 
         let titleFacet = SKShapeNode(path: HexGeometry.hexPath(radius: size.height < 760 ? 4.5 : 5))
         titleFacet.name = "hud.titleFacet"
-        titleFacet.fillColor = UIColor(hex: "C7D0FF").withAlphaComponent(0.065)
-        titleFacet.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.12)
+        titleFacet.fillColor = UIColor(hex: "C7D0FF").withAlphaComponent(0.055)
+        titleFacet.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.1)
         titleFacet.lineWidth = 0.8
         titleFacet.position = CGPoint(x: size.width * 0.5 - (size.height < 760 ? 22 : 25), y: metrics.titleAccentY + 1)
         addChild(titleFacet)
 
-        scoreCaptionLabel = label(VexloStrings.HUD.score, size: 11, alpha: 0.31, align: .right)
+        scoreCaptionLabel = label(VexloStrings.HUD.score, size: 10.5, alpha: 0.27, align: .right)
         scoreCaptionLabel.name = "hud.scoreCaption"
         scoreCaptionLabel.position = CGPoint(x: size.width - metrics.sideInset - metrics.utilityRadius * 2 - 12, y: metrics.topY)
         addChild(scoreCaptionLabel)
@@ -301,7 +305,7 @@ final class GameScene: SKScene {
         scoreLabel.position = CGPoint(x: size.width - metrics.sideInset - metrics.utilityRadius * 2 - 12, y: metrics.topY - 20)
         addChild(scoreLabel)
 
-        modeLabel = label("", size: 11, alpha: 0.46, align: .center, weight: true)
+        modeLabel = label("", size: 10.5, alpha: 0.44, align: .center, weight: true)
         modeLabel.name = "hud.mode"
         modeLabel.position = CGPoint(x: size.width * 0.5, y: metrics.modeY)
         addChild(modeLabel)
@@ -380,7 +384,7 @@ final class GameScene: SKScene {
     }
 
     private func buildGrid() {
-        children.filter { $0.name == "board.backdrop" || $0.name == "board.frame" || $0.name == "board.halo" }.forEach { $0.removeFromParent() }
+        children.filter { $0.name?.hasPrefix("board.") == true }.forEach { $0.removeFromParent() }
         cellNodes.values.forEach { $0.removeFromParent() }
         cellNodes = [:]
         let bounds = HexGeometry.boardBounds(cols: cols, rows: rows)
@@ -413,6 +417,22 @@ final class GameScene: SKScene {
         frame.lineWidth = 1
         frame.zPosition = -2
         addChild(frame)
+
+        let signatureFacetRadius: CGFloat = size.height < 760 ? 6.5 : 7.5
+        let signatureFacetPositions = [
+            CGPoint(x: boardRect.minX + 28, y: boardRect.maxY - 28),
+            CGPoint(x: boardRect.maxX - 30, y: boardRect.minY + 30)
+        ]
+        for (index, position) in signatureFacetPositions.enumerated() {
+            let facet = SKShapeNode(path: HexGeometry.hexPath(radius: signatureFacetRadius))
+            facet.name = "board.signatureFacet.\(index)"
+            facet.fillColor = UIColor(hex: index == 0 ? "C7D0FF" : "7A74F7").withAlphaComponent(0.032)
+            facet.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.07)
+            facet.lineWidth = 0.75
+            facet.position = position
+            facet.zPosition = -1.5
+            addChild(facet)
+        }
 
         for col in 0..<cols {
             for row in 0..<rows {
@@ -587,6 +607,7 @@ final class GameScene: SKScene {
         DailyChallengeService.shared.refreshForCurrentDay()
         syncBoard()
         syncModeSurface()
+        syncModeIdentitySurface()
         syncScores()
         syncTray()
         syncOnboardingSurface()
@@ -691,7 +712,7 @@ final class GameScene: SKScene {
             overlayProgressLabel.text = VexloStrings.Overlay.leaderboard
             if score >= best && score > runStartBest {
                 overlayBadgeLabel.text = VexloStrings.Overlay.newBest
-                overlayDetailLabel.text = VexloStrings.Overlay.savedForNextRun
+                overlayDetailLabel.text = ""
             } else {
                 overlayBadgeLabel.text = ""
                 let gap = max(0, best - score)
@@ -926,6 +947,11 @@ final class GameScene: SKScene {
         bestLabel.text = "\(best)"
         scoreLabel.text = "\(score)"
         overlayScoreLabel.text = "\(score)"
+        bestCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.27)
+        bestLabel.fontColor = UIColor(hex: "6C5CE7")
+        scoreCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.27)
+        scoreLabel.fontColor = .white
+        syncPublicCaptureMetricContextIfNeeded()
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
         if shouldShowTopMetrics && best != lastBestValue {
             animateLabelUpdate(bestLabel, emphasis: 1.025)
@@ -1071,6 +1097,7 @@ final class GameScene: SKScene {
     }
 
     private func canShowReroll(for slotIndex: Int) -> Bool {
+        guard !LaunchSupport.shared.isCaptureMode else { return false }
         guard !engine.isDailyChallenge else { return false }
         guard !isOverlayPresented,
               !isRestarting,
@@ -1130,17 +1157,53 @@ final class GameScene: SKScene {
         }
         modeLabel.isHidden = false
         let status = DailyChallengeService.shared.currentStatus()
-        if engine.isDailyChallenge {
+        if LaunchSupport.shared.isCaptureMode {
+            modeLabel.text = engine.isDailyChallenge ? VexloStrings.HUD.todaysChallenge : VexloStrings.HUD.mainRun
+            modeLabel.alpha = isPublicEditorialCapture ? (engine.isDailyChallenge ? 0.58 : 0.5) : 0.52
+        } else if engine.isDailyChallenge {
             modeLabel.text = VexloStrings.HUD.mainRun
-            modeLabel.alpha = 0.56
+            modeLabel.alpha = 0.52
         } else if status.streakCount > 0 {
             modeLabel.text = VexloStrings.HUD.todaysChallenge(streak: status.streakCount)
-            modeLabel.alpha = 0.58
+            modeLabel.alpha = 0.54
         } else {
             modeLabel.text = VexloStrings.HUD.todaysChallenge
-            modeLabel.alpha = 0.5
+            modeLabel.alpha = 0.48
         }
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
+    }
+
+    private func syncPublicCaptureMetricContextIfNeeded() {
+        guard isPublicEditorialCapture, !terminalOverlayOwnsResultContext else { return }
+        if engine.isDailyChallenge {
+            bestCaptionLabel.fontColor = UIColor(hex: "DDE6FF").withAlphaComponent(0.34)
+            bestLabel.fontColor = UIColor(hex: "F8FBFF")
+            scoreCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.25)
+        } else {
+            bestCaptionLabel.fontColor = UIColor(hex: "B5A8FF").withAlphaComponent(0.3)
+            bestLabel.fontColor = UIColor(hex: "6C5CE7")
+            scoreCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.27)
+        }
+        scoreLabel.fontColor = UIColor.white
+    }
+
+    private func syncModeIdentitySurface() {
+        let isDaily = engine.isDailyChallenge
+        if let accent = childNode(withName: "hud.titleAccent") as? SKShapeNode {
+            accent.fillColor = UIColor(hex: isDaily ? "C7D0FF" : "7A74F7").withAlphaComponent(isDaily ? 0.24 : 0.3)
+            accent.strokeColor = UIColor(hex: isDaily ? "F4F3FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.07 : 0.08)
+        }
+        if let titleFacet = childNode(withName: "hud.titleFacet") as? SKShapeNode {
+            titleFacet.fillColor = UIColor(hex: isDaily ? "E8EDFF" : "C7D0FF").withAlphaComponent(isDaily ? 0.048 : 0.055)
+            titleFacet.strokeColor = UIColor(hex: isDaily ? "DDE6FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.085 : 0.1)
+        }
+        for index in 0..<2 {
+            guard let facet = childNode(withName: "board.signatureFacet.\(index)") as? SKShapeNode else { continue }
+            let dailyHex = index == 0 ? "E8EDFF" : "BFD4FF"
+            let normalHex = index == 0 ? "C7D0FF" : "7A74F7"
+            facet.fillColor = UIColor(hex: isDaily ? dailyHex : normalHex).withAlphaComponent(isDaily ? 0.038 : 0.032)
+            facet.strokeColor = UIColor(hex: isDaily ? "DDE6FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.078 : 0.07)
+        }
     }
 
     private func beginSceneRun(mode: GameEngine.RunMode) {
@@ -1200,8 +1263,12 @@ final class GameScene: SKScene {
         switch captureState {
         case .normalRun:
             beginCaptureNormalRun()
+        case .normalHero:
+            beginCaptureNormalHeroRun()
         case .dailyChallenge:
             beginCaptureDailyRun()
+        case .dailyHero:
+            beginCaptureDailyHeroRun()
         case .normalResult:
             beginCaptureNormalResult()
         case .dailyResult:
@@ -1212,7 +1279,7 @@ final class GameScene: SKScene {
         return true
     }
 
-    private func beginCaptureNormalRun() {
+    private func beginCaptureNormalRun(seed: UInt64 = LaunchSupport.shared.captureNormalSeed) {
         cancelDrag()
         resetVisualActions()
         hideOverlayIfNeeded()
@@ -1222,7 +1289,7 @@ final class GameScene: SKScene {
         hasRecordedContinueOfferForCurrentLoss = false
         visibleRerollOfferSlots.removeAll()
         isPresentingSupporterPurchase = false
-        engine.startNormalRun(seed: LaunchSupport.shared.captureNormalSeed)
+        engine.startNormalRun(seed: seed)
         MonetizationService.shared.resetRunState()
         hasStartedMonetizationRun = false
         hasStartedAnalyticsRun = false
@@ -1231,6 +1298,20 @@ final class GameScene: SKScene {
         runStartBest = engine.scoreEngine.best
         lastScoreValue = engine.scoreEngine.score
         lastBestValue = currentDisplayedBest()
+        syncAll()
+    }
+
+    private func beginCaptureNormalHeroRun() {
+        beginCaptureNormalRun(seed: LaunchSupport.shared.captureNormalHeroSeed)
+        playCaptureHeroSequence(
+            maxPlacements: 6,
+            preferredAnchors: [
+                HexCoordinate(2, 2), HexCoordinate(3, 2), HexCoordinate(1, 3),
+                HexCoordinate(4, 1), HexCoordinate(0, 4), HexCoordinate(5, 3),
+                HexCoordinate(2, 5), HexCoordinate(4, 4), HexCoordinate(1, 1),
+                HexCoordinate(5, 0), HexCoordinate(0, 1), HexCoordinate(3, 5)
+            ]
+        )
         syncAll()
     }
 
@@ -1255,6 +1336,40 @@ final class GameScene: SKScene {
         lastScoreValue = engine.scoreEngine.score
         lastBestValue = currentDisplayedBest()
         syncAll()
+    }
+
+    private func beginCaptureDailyHeroRun() {
+        beginCaptureDailyRun()
+        playCaptureHeroSequence(
+            maxPlacements: 6,
+            preferredAnchors: [
+                HexCoordinate(3, 2), HexCoordinate(2, 3), HexCoordinate(4, 2),
+                HexCoordinate(1, 1), HexCoordinate(5, 3), HexCoordinate(0, 4),
+                HexCoordinate(3, 5), HexCoordinate(4, 0), HexCoordinate(1, 4),
+                HexCoordinate(5, 1), HexCoordinate(2, 0), HexCoordinate(0, 2)
+            ]
+        )
+        syncAll()
+    }
+
+    private func playCaptureHeroSequence(maxPlacements: Int, preferredAnchors: [HexCoordinate]) {
+        var placements = 0
+        while placements < maxPlacements, !engine.isGameOver {
+            var didPlace = false
+            for slotIndex in engine.pieces.indices {
+                guard let piece = engine.pieces[slotIndex],
+                      let anchor = preferredAnchors.first(where: { engine.canPlace(piece, at: $0) }) else {
+                    continue
+                }
+                engine.place(piece, at: anchor, slotIndex: slotIndex)
+                placements += 1
+                didPlace = true
+                break
+            }
+            if !didPlace { break }
+        }
+        lastScoreValue = engine.scoreEngine.score
+        lastBestValue = currentDisplayedBest()
     }
 
     private func beginCaptureUtilitySurface() {
@@ -1592,21 +1707,22 @@ final class GameScene: SKScene {
         utilityHapticsLabel.isHidden = !canShowHaptics
         utilityHapticsLabel.alpha = canShowHaptics ? 1 : 0
 
-        let isUtilityCapture = LaunchSupport.shared.isUtilitySurfaceCapture
-        let canShowSupporter = !isUtilityCapture &&
+        let isPublicUtilityCapture = LaunchSupport.shared.isUtilitySurfaceCapture && !LaunchSupport.shared.isInternalCapture
+        let canShowSupporter = !isPublicUtilityCapture &&
             MonetizationService.shared.canPresentSupporterPack() &&
             !isPresentingSupporterPurchase
         utilitySupporterLabel.isHidden = !canShowSupporter
         utilitySupporterLabel.alpha = canShowSupporter ? 1 : 0
 
-        let canRestore = !isUtilityCapture &&
+        let canRestore = !isPublicUtilityCapture &&
             SupporterPackService.shared.isProductLoaded &&
             !MonetizationService.shared.capabilities.supporterOwned &&
             !isPresentingSupporterPurchase
         utilityRestoreLabel.isHidden = !canRestore
         utilityRestoreLabel.alpha = canRestore ? 0.68 : 0
 
-        let canExport = !isUtilityCapture && AnalyticsService.shared.isTesterExportAvailable
+        let canExport = (!LaunchSupport.shared.isCaptureMode || LaunchSupport.shared.isInternalCapture) &&
+            AnalyticsService.shared.isTesterExportAvailable
         utilityExportLabel.isHidden = !canExport
         utilityExportLabel.alpha = canExport ? 0.58 : 0
 
@@ -2147,8 +2263,8 @@ final class GameScene: SKScene {
     }
 
     private func applyEmptyCellStyle(_ node: SKShapeNode) {
-        node.fillColor = UIColor(hex: "DEE7FF").withAlphaComponent(0.054)
-        node.strokeColor = UIColor(hex: "F5F7FF").withAlphaComponent(0.115)
+        node.fillColor = UIColor(hex: engine.isDailyChallenge ? "EAF2FF" : "DEE7FF").withAlphaComponent(engine.isDailyChallenge ? 0.058 : 0.054)
+        node.strokeColor = UIColor(hex: engine.isDailyChallenge ? "DDE6FF" : "F5F7FF").withAlphaComponent(engine.isDailyChallenge ? 0.108 : 0.115)
         node.lineWidth = 0.95
         node.alpha = 1.0
         node.setScale(1.0)

@@ -110,7 +110,7 @@ enum PieceFactory {
         Template(id: "cornerA", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(0,1)], tier: 1),
         Template(id: "cornerB", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(1,1)], tier: 1),
         Template(id: "cornerC", offsets: [HexCoordinate(0,0), HexCoordinate(0,1), HexCoordinate(1,1)], tier: 1),
-        Template(id: "hook3", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(1,2)], tier: 1),
+        Template(id: "hook3", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(1,2)], tier: 2),
         Template(id: "tee4", offsets: [HexCoordinate(0,0), HexCoordinate(0,1), HexCoordinate(0,2), HexCoordinate(1,1)], tier: 2),
         Template(id: "block4", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(0,1), HexCoordinate(1,1)], tier: 2),
         Template(id: "line4h", offsets: [HexCoordinate(0,0), HexCoordinate(1,0), HexCoordinate(2,0), HexCoordinate(3,0)], tier: 2),
@@ -263,6 +263,10 @@ enum PieceFactory {
         let weight: Int
     }
 
+    private static func isGapPivot(_ template: Template) -> Bool {
+        template.id == "hook3"
+    }
+
     private static func weightedTemplates(for occupiedCellCount: Int, opening: Bool) -> [WeightedTemplate] {
         templates.compactMap { template in
             let profile = profile(for: template)
@@ -275,6 +279,12 @@ enum PieceFactory {
             } else if occupiedCellCount < 8 {
                 weight += template.tier == 0 ? 60 : 15
                 weight += size <= 3 ? 20 : -10
+                if profile.role == .pivot && size == 3 && !isGapPivot(template) {
+                    weight += 14
+                }
+                if template.id == "single" {
+                    weight -= 10
+                }
             } else if occupiedCellCount < 18 {
                 weight += template.tier == 1 ? 20 : 0
                 weight += size == 3 ? 15 : 0
@@ -293,6 +303,9 @@ enum PieceFactory {
                     weight += occupiedCellCount >= 8 && occupiedCellCount < 18 ? 12 : 6
                 case .pressure:
                     weight += occupiedCellCount < 8 ? -18 : (occupiedCellCount < 18 ? 6 : -8)
+                }
+                if isGapPivot(template) {
+                    weight += occupiedCellCount < 8 ? -32 : (occupiedCellCount < 18 ? 8 : 2)
                 }
             }
             return WeightedTemplate(template: template, weight: max(1, weight))
@@ -325,8 +338,21 @@ enum PieceFactory {
                 if selected.contains(where: { $0.role == candidate.role }) {
                     weight = max(1, weight - 22)
                 }
+                if selected.contains(where: { $0.role == .relief }) && candidate.role == .relief {
+                    weight = max(1, weight - (occupiedCellCount >= 18 ? 30 : 18))
+                }
+                if selected.contains(where: { $0.heaviness >= 5 }) && candidate.heaviness >= 5 {
+                    weight = max(1, weight - 24)
+                }
+                if isGapPivot(candidate.template),
+                   selected.contains(where: { $0.role == .pivot || $0.flexibility >= 5 }) {
+                    weight = max(1, weight - 28)
+                }
                 if memory.recentTemplateIDs.contains(candidate.template.id) {
                     weight = max(1, weight - 35)
+                }
+                if isGapPivot(candidate.template) && memory.recentTemplateIDs.contains("hook3") {
+                    weight = max(1, weight - 55)
                 }
                 if memory.recentAxes.contains(candidate.axis) {
                     weight = max(1, weight - 12)
@@ -360,15 +386,62 @@ enum PieceFactory {
         let reliefCount = batch.filter { $0.role == .relief }.count
         let pivotCount = batch.filter { $0.role == .pivot }.count
         let pressureCount = batch.filter { $0.role == .pressure }.count
+        let heavyCount = batch.filter { $0.heaviness >= 5 }.count
+        let flexCount = batch.filter { $0.flexibility >= 4 }.count
+        let lowFootprintCount = batch.filter { $0.size <= 2 }.count
+        let earlyMasteryWindow = opening || (occupiedCellCount < 8 && memory.batchCount <= 1)
+
+        if roles.count >= 2 && axes.count >= 2 {
+            score += 14
+        }
+        if roles.count == 1 {
+            score -= opening ? 10 : 24
+        }
+        if flexCount >= 2 && pressureCount <= 1 {
+            score += 10
+        }
+        if heavyCount > 1 {
+            score -= occupiedCellCount >= 18 ? 24 : 14
+        }
+
+        if earlyMasteryWindow {
+            if reliefCount >= 1 && pivotCount >= 1 {
+                score += 18
+            }
+            if axes.count >= 2 {
+                score += 10
+            }
+            if sizes.contains(2) && sizes.contains(3) {
+                score += 12
+            }
+            if reliefCount == batch.count {
+                score -= 18
+            }
+            if pivotCount == batch.count {
+                score -= 14
+            }
+            if pressureCount > 0 {
+                score -= opening ? 24 : 10
+            }
+            if heavyCount > 0 {
+                score -= opening ? 16 : 8
+            }
+        }
 
         if opening {
             score += reliefCount * 26
             score += pivotCount * 10
             score -= pressureCount * 18
+            if reliefCount == 2 && pivotCount == 1 {
+                score += 12
+            }
         } else if occupiedCellCount < 8 {
             score += reliefCount * 10
             score += pivotCount * 14
             score -= max(0, pressureCount - 1) * 14
+            if memory.batchCount <= 1 && reliefCount == 1 && pivotCount >= 1 {
+                score += 10
+            }
         } else if occupiedCellCount < 18 {
             if reliefCount > 0 { score += 16 }
             if pivotCount > 0 { score += 20 }
@@ -382,6 +455,34 @@ enum PieceFactory {
             if pressureCount > 1 { score -= 16 }
         }
 
+        if !opening {
+            if occupiedCellCount < 8 {
+                if reliefCount > 1 { score -= 14 }
+                if reliefCount == 0 { score -= 6 }
+            } else if occupiedCellCount < 18 {
+                if reliefCount == 1 { score += 8 }
+                if reliefCount > 1 { score -= 20 }
+            } else {
+                if reliefCount == 1 && pivotCount > 0 { score += 10 }
+                if reliefCount > 1 { score -= 28 }
+                if lowFootprintCount == 0 { score -= 10 }
+                if lowFootprintCount > 1 { score -= 12 }
+            }
+        }
+
+        let gapPivotCount = batch.filter { isGapPivot($0.template) }.count
+        if opening && gapPivotCount > 0 {
+            score -= 80
+        } else if occupiedCellCount < 8 && gapPivotCount > 0 {
+            score -= 34
+        } else if occupiedCellCount < 18 {
+            if gapPivotCount == 1 { score += 8 }
+            if gapPivotCount > 1 { score -= 36 }
+        } else {
+            if gapPivotCount == 1 { score += 4 }
+            if gapPivotCount > 1 { score -= 32 }
+        }
+
         for profile in batch {
             if memory.recentTemplateIDs.contains(profile.template.id) {
                 score -= 24
@@ -391,6 +492,9 @@ enum PieceFactory {
             }
             if memory.recentAxes.contains(profile.axis) {
                 score -= 7
+            }
+            if isGapPivot(profile.template) && memory.batchCount > 0 {
+                score -= 10
             }
         }
 

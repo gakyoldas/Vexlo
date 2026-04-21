@@ -14,10 +14,11 @@ final class ScoreEngine {
     private let pointsPerCell: Int = 10
     private let comboBonus: Int = 2
     private let defaults = UserDefaults.standard
-    private let bestKey = "nf_vexlo_best"
 
     init() {
-        best = defaults.integer(forKey: bestKey)
+        best = ICloudProgressSyncService.shared.mergeBestScore(
+            localBest: defaults.integer(forKey: ICloudProgressSyncService.Keys.bestScore)
+        )
     }
 
     @discardableResult
@@ -28,7 +29,8 @@ final class ScoreEngine {
         score += points
         if updatesBest, score > best {
             best = score
-            defaults.set(best, forKey: bestKey)
+            defaults.set(best, forKey: ICloudProgressSyncService.Keys.bestScore)
+            ICloudProgressSyncService.shared.publishBestScore(best)
         }
         return ScoreResult(
             points: points,

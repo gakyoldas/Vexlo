@@ -79,6 +79,8 @@ final class GameScene: SKScene {
         let sideInset: CGFloat
         let topY: CGFloat
         let modeY: CGFloat
+        let titleY: CGFloat
+        let titleAccentY: CGFloat
         let utilityRadius: CGFloat
         let utilityCenter: CGPoint
         let utilityPanelWidth: CGFloat
@@ -96,6 +98,7 @@ final class GameScene: SKScene {
         let overlayRestartSize: CGSize
         let overlayScoreFontSize: CGFloat
         let rerollBadgeInset: CGFloat
+        let boardVerticalBias: CGFloat
     }
 
     private struct LayoutSignature: Equatable {
@@ -122,24 +125,27 @@ final class GameScene: SKScene {
         return LayoutMetrics(
             sideInset: sideInset,
             topY: topY,
-            modeY: topY - (compact ? 32 : 34),
+            modeY: topY - (compact ? 37 : 41),
+            titleY: topY - (compact ? 10 : 11),
+            titleAccentY: topY - (compact ? 22 : 24),
             utilityRadius: utilityRadius,
             utilityCenter: utilityCenter,
             utilityPanelWidth: utilityPanelWidth,
-            utilityRowHeight: compact ? 32 : 34,
+            utilityRowHeight: compact ? 33 : 35,
             utilityRowHitHeight: compact ? 44 : 46,
-            utilityPanelTopInset: compact ? 15 : 16,
-            utilityPanelBottomInset: compact ? 12 : 14,
-            overlayCaptionOffset: compact ? 78 : 86,
+            utilityPanelTopInset: compact ? 16 : 17,
+            utilityPanelBottomInset: compact ? 13 : 15,
+            overlayCaptionOffset: compact ? 79 : 87,
             overlayScoreOffset: compact ? 16 : 18,
-            overlayBadgeOffset: compact ? -22 : -26,
-            overlayDetailOffset: compact ? -44 : -50,
-            overlayActionsStartOffset: compact ? -72 : -82,
-            overlaySecondarySpacing: compact ? 18 : 20,
+            overlayBadgeOffset: compact ? -21 : -24,
+            overlayDetailOffset: compact ? -43 : -47,
+            overlayActionsStartOffset: compact ? -70 : -78,
+            overlaySecondarySpacing: compact ? 17 : 18,
             overlayContinueSize: CGSize(width: actionWidth, height: compact ? 46 : 48),
             overlayRestartSize: CGSize(width: actionWidth, height: compact ? 52 : 54),
             overlayScoreFontSize: compact ? 56 : 64,
-            rerollBadgeInset: compact ? 16 : 18
+            rerollBadgeInset: compact ? 16 : 18,
+            boardVerticalBias: compact ? 0.53 : 0.54
         )
     }
 
@@ -198,6 +204,7 @@ final class GameScene: SKScene {
         lastLayoutSignature = signature
         resetVisualActions()
         computeOrigin()
+        buildAtmosphere()
         buildHUD()
         buildUtilitySurface()
         buildGrid()
@@ -224,11 +231,12 @@ final class GameScene: SKScene {
 
     private func computeOrigin() {
         let safe = view?.safeAreaInsets.top ?? 44
+        let metrics = layoutMetrics
         let bounds = HexGeometry.boardBounds(cols: cols, rows: rows)
         let trayTop = trayBottom + slotH + 24
         let hudBottom = size.height - safe - hudH
         let availableH = hudBottom - trayTop
-        let centerY = trayTop + availableH * 0.5
+        let centerY = trayTop + availableH * metrics.boardVerticalBias
         gridOrigin = CGPoint(
             x: (size.width - bounds.width) * 0.5 - bounds.minX,
             y: centerY - bounds.height * 0.5 - bounds.minY
@@ -239,7 +247,7 @@ final class GameScene: SKScene {
         children.filter { $0.name?.hasPrefix("hud.") == true }.forEach { $0.removeFromParent() }
         let metrics = layoutMetrics
 
-        bestCaptionLabel = label(VexloStrings.HUD.best, size: 11, alpha: 0.35, align: .left)
+        bestCaptionLabel = label(VexloStrings.HUD.best, size: 11, alpha: 0.31, align: .left)
         bestCaptionLabel.name = "hud.bestCaption"
         bestCaptionLabel.position = CGPoint(x: metrics.sideInset, y: metrics.topY)
         addChild(bestCaptionLabel)
@@ -249,12 +257,28 @@ final class GameScene: SKScene {
         bestLabel.position = CGPoint(x: metrics.sideInset, y: metrics.topY - 20)
         addChild(bestLabel)
 
-        let title = label(VexloStrings.HUD.title, size: 16, color: .white, align: .center, weight: true)
+        let title = label(VexloStrings.HUD.title, size: 17, color: UIColor(hex: "F4F3FF"), alpha: 0.93, align: .center, weight: true)
         title.name = "hud.title"
-        title.position = CGPoint(x: size.width * 0.5, y: metrics.topY - 10)
+        title.position = CGPoint(x: size.width * 0.5, y: metrics.titleY)
         addChild(title)
 
-        let scoreCaption = label(VexloStrings.HUD.score, size: 11, alpha: 0.35, align: .right)
+        let accent = SKShapeNode(rectOf: CGSize(width: size.height < 760 ? 22 : 26, height: 2), cornerRadius: 1)
+        accent.name = "hud.titleAccent"
+        accent.fillColor = UIColor(hex: "7A74F7").withAlphaComponent(0.36)
+        accent.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.1)
+        accent.lineWidth = 1
+        accent.position = CGPoint(x: size.width * 0.5, y: metrics.titleAccentY)
+        addChild(accent)
+
+        let titleFacet = SKShapeNode(path: HexGeometry.hexPath(radius: size.height < 760 ? 4.5 : 5))
+        titleFacet.name = "hud.titleFacet"
+        titleFacet.fillColor = UIColor(hex: "C7D0FF").withAlphaComponent(0.065)
+        titleFacet.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.12)
+        titleFacet.lineWidth = 0.8
+        titleFacet.position = CGPoint(x: size.width * 0.5 - (size.height < 760 ? 22 : 25), y: metrics.titleAccentY + 1)
+        addChild(titleFacet)
+
+        let scoreCaption = label(VexloStrings.HUD.score, size: 11, alpha: 0.31, align: .right)
         scoreCaption.name = "hud.scoreCaption"
         scoreCaption.position = CGPoint(x: size.width - metrics.sideInset - metrics.utilityRadius * 2 - 12, y: metrics.topY)
         addChild(scoreCaption)
@@ -264,7 +288,7 @@ final class GameScene: SKScene {
         scoreLabel.position = CGPoint(x: size.width - metrics.sideInset - metrics.utilityRadius * 2 - 12, y: metrics.topY - 20)
         addChild(scoreLabel)
 
-        modeLabel = label("", size: 11, alpha: 0.5, align: .center, weight: true)
+        modeLabel = label("", size: 11, alpha: 0.46, align: .center, weight: true)
         modeLabel.name = "hud.mode"
         modeLabel.position = CGPoint(x: size.width * 0.5, y: metrics.modeY)
         addChild(modeLabel)
@@ -277,12 +301,19 @@ final class GameScene: SKScene {
 
         utilityButton = SKShapeNode(circleOfRadius: metrics.utilityRadius)
         utilityButton.name = "utility.button"
-        utilityButton.fillColor = UIColor.white.withAlphaComponent(0.05)
-        utilityButton.strokeColor = UIColor.white.withAlphaComponent(0.1)
+        utilityButton.fillColor = UIColor(hex: "14142A").withAlphaComponent(0.92)
+        utilityButton.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.14)
         utilityButton.lineWidth = 1
         utilityButton.position = metrics.utilityCenter
         utilityButton.zPosition = 240
         addChild(utilityButton)
+
+        let utilityGlow = SKShapeNode(circleOfRadius: metrics.utilityRadius + 4)
+        utilityGlow.name = "utility.glow"
+        utilityGlow.fillColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.035)
+        utilityGlow.strokeColor = .clear
+        utilityGlow.zPosition = -1
+        utilityButton.addChild(utilityGlow)
 
         let glyph = label("···", size: 18, color: .white, alpha: 0.72, align: .center, weight: true)
         glyph.verticalAlignmentMode = .center
@@ -296,8 +327,8 @@ final class GameScene: SKScene {
         addChild(utilityMenuNode)
 
         utilityMenuBackground = SKShapeNode()
-        utilityMenuBackground.fillColor = UIColor(hex: "12122A").withAlphaComponent(0.96)
-        utilityMenuBackground.strokeColor = UIColor.white.withAlphaComponent(0.08)
+        utilityMenuBackground.fillColor = UIColor(hex: "12122A").withAlphaComponent(0.965)
+        utilityMenuBackground.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.1)
         utilityMenuBackground.lineWidth = 1
         utilityMenuNode.addChild(utilityMenuBackground)
 
@@ -336,15 +367,45 @@ final class GameScene: SKScene {
     }
 
     private func buildGrid() {
+        children.filter { $0.name == "board.backdrop" || $0.name == "board.frame" || $0.name == "board.halo" }.forEach { $0.removeFromParent() }
         cellNodes.values.forEach { $0.removeFromParent() }
         cellNodes = [:]
+        let bounds = HexGeometry.boardBounds(cols: cols, rows: rows)
+        let boardRect = CGRect(
+            x: gridOrigin.x + bounds.minX - 18,
+            y: gridOrigin.y + bounds.minY - 20,
+            width: bounds.width + 36,
+            height: bounds.height + 40
+        )
+
+        let halo = SKShapeNode(rect: boardRect.insetBy(dx: -12, dy: -16), cornerRadius: 36)
+        halo.name = "board.halo"
+        halo.fillColor = UIColor(hex: "92A1FF").withAlphaComponent(0.024)
+        halo.strokeColor = .clear
+        halo.zPosition = -4
+        addChild(halo)
+
+        let backdrop = SKShapeNode(rect: boardRect, cornerRadius: 30)
+        backdrop.name = "board.backdrop"
+        backdrop.fillColor = UIColor(hex: "101020").withAlphaComponent(0.635)
+        backdrop.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.072)
+        backdrop.lineWidth = 1
+        backdrop.zPosition = -3
+        addChild(backdrop)
+
+        let frame = SKShapeNode(rect: boardRect.insetBy(dx: 8, dy: 8), cornerRadius: 24)
+        frame.name = "board.frame"
+        frame.fillColor = UIColor.clear
+        frame.strokeColor = UIColor.white.withAlphaComponent(0.048)
+        frame.lineWidth = 1
+        frame.zPosition = -2
+        addChild(frame)
+
         for col in 0..<cols {
             for row in 0..<rows {
                 let coord = HexCoordinate(col, row)
                 let node = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius - 1))
-                node.fillColor = UIColor(white: 1, alpha: 0.03)
-                node.strokeColor = UIColor(white: 1, alpha: 0.06)
-                node.lineWidth = 0.8
+                applyEmptyCellStyle(node)
                 node.position = HexGeometry.pixelCenter(for: coord, origin: gridOrigin)
                 addChild(node)
                 cellNodes[coord] = node
@@ -364,11 +425,44 @@ final class GameScene: SKScene {
         for i in 0..<3 {
             let cx = pad + slotW * CGFloat(i) + slotSpacing * CGFloat(i) + slotW * 0.5
             let slot = SKShapeNode(rectOf: CGSize(width: slotW, height: slotH), cornerRadius: 14)
-            slot.fillColor = UIColor(hex: "12122A")
-            slot.strokeColor = UIColor(hex: "1C1C3A")
+            slot.name = "tray.slot.\(i)"
+            slot.fillColor = UIColor(hex: "131328")
+            slot.strokeColor = UIColor(hex: "262643")
             slot.lineWidth = 1
             slot.position = CGPoint(x: cx, y: centerY)
             slot.zPosition = 1
+
+            let base = SKShapeNode(rectOf: CGSize(width: slotW, height: slotH + 2), cornerRadius: 15)
+            base.name = "slot.base"
+            base.fillColor = UIColor.black.withAlphaComponent(0.24)
+            base.strokeColor = .clear
+            base.position = CGPoint(x: 0, y: -2)
+            base.zPosition = -2
+            slot.addChild(base)
+
+            let inner = SKShapeNode(rectOf: CGSize(width: slotW - 8, height: slotH - 8), cornerRadius: 12)
+            inner.name = "slot.inner"
+            inner.fillColor = UIColor.white.withAlphaComponent(0.012)
+            inner.strokeColor = UIColor.white.withAlphaComponent(0.03)
+            inner.lineWidth = 1
+            inner.zPosition = -1
+            slot.addChild(inner)
+
+            let sheen = SKShapeNode(rectOf: CGSize(width: slotW - 20, height: 2), cornerRadius: 1)
+            sheen.name = "slot.sheen"
+            sheen.fillColor = UIColor.white.withAlphaComponent(0.09)
+            sheen.strokeColor = .clear
+            sheen.position = CGPoint(x: 0, y: slotH * 0.5 - 10)
+            sheen.zPosition = 2
+            slot.addChild(sheen)
+
+            let restMark = SKShapeNode(rectOf: CGSize(width: min(26, slotW * 0.22), height: 2), cornerRadius: 1)
+            restMark.name = "slot.restMark"
+            restMark.fillColor = UIColor.white.withAlphaComponent(0.13)
+            restMark.strokeColor = .clear
+            restMark.zPosition = 2
+            slot.addChild(restMark)
+
             addChild(slot)
             traySlots.append(slot)
             traySlotFrames.append(CGRect(
@@ -389,14 +483,14 @@ final class GameScene: SKScene {
         addChild(overlayNode)
 
         let bg = SKShapeNode(rectOf: size)
-        bg.fillColor = UIColor.black.withAlphaComponent(0.78)
+        bg.fillColor = UIColor(hex: "06060E").withAlphaComponent(0.8)
         bg.strokeColor = .clear
         bg.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
         overlayNode.addChild(bg)
 
         let metrics = layoutMetrics
 
-        overlayCaptionLabel = label(VexloStrings.Overlay.gameOver, size: 12, alpha: 0.4, align: .center)
+        overlayCaptionLabel = label(VexloStrings.Overlay.gameOver, size: 12, alpha: 0.36, align: .center)
         overlayCaptionLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayCaptionOffset)
         overlayNode.addChild(overlayCaptionLabel)
 
@@ -408,34 +502,34 @@ final class GameScene: SKScene {
         overlayBadgeLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayBadgeOffset)
         overlayNode.addChild(overlayBadgeLabel)
 
-        overlayDetailLabel = label("", size: 13, alpha: 0.58, align: .center)
+        overlayDetailLabel = label("", size: 13, alpha: 0.54, align: .center)
         overlayDetailLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayDetailOffset)
         overlayNode.addChild(overlayDetailLabel)
 
-        overlayProgressLabel = label(VexloStrings.Overlay.gameCenter, size: 12, alpha: 0.48, align: .center, weight: true)
+        overlayProgressLabel = label(VexloStrings.Overlay.gameCenter, size: 12, alpha: 0.44, align: .center, weight: true)
         overlayProgressLabel.name = "progress"
         overlayProgressLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset)
         overlayNode.addChild(overlayProgressLabel)
 
-        overlayGamesLabel = label("", size: 12, alpha: 0.48, align: .center, weight: true)
+        overlayGamesLabel = label("", size: 12, alpha: 0.44, align: .center, weight: true)
         overlayGamesLabel.name = "games"
         overlayGamesLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset - metrics.overlaySecondarySpacing)
         overlayGamesLabel.isHidden = true
         overlayNode.addChild(overlayGamesLabel)
 
-        overlaySupporterLabel = label(VexloStrings.Overlay.supporterPack, size: 12, alpha: 0.62, align: .center, weight: true)
+        overlaySupporterLabel = label(VexloStrings.Overlay.supporterPack, size: 12, alpha: 0.56, align: .center, weight: true)
         overlaySupporterLabel.name = "supporter"
         overlaySupporterLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 - 114)
         overlaySupporterLabel.isHidden = true
         overlayNode.addChild(overlaySupporterLabel)
 
-        overlayRestoreLabel = label(VexloStrings.Overlay.restorePurchases, size: 11, alpha: 0.42, align: .center, weight: true)
+        overlayRestoreLabel = label(VexloStrings.Overlay.restorePurchases, size: 11, alpha: 0.38, align: .center, weight: true)
         overlayRestoreLabel.name = "restore"
         overlayRestoreLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 - 132)
         overlayRestoreLabel.isHidden = true
         overlayNode.addChild(overlayRestoreLabel)
 
-        overlayExportLabel = label(VexloStrings.Overlay.exportDiagnostics, size: 11, alpha: 0.4, align: .center, weight: true)
+        overlayExportLabel = label(VexloStrings.Overlay.exportDiagnostics, size: 11, alpha: 0.36, align: .center, weight: true)
         overlayExportLabel.name = "export"
         overlayExportLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 - 150)
         overlayExportLabel.isHidden = !AnalyticsService.shared.isTesterExportAvailable
@@ -446,8 +540,8 @@ final class GameScene: SKScene {
             cornerRadius: metrics.overlayContinueSize.height * 0.5
         )
         overlayContinueButton.name = "continue"
-        overlayContinueButton.fillColor = UIColor.white.withAlphaComponent(0.06)
-        overlayContinueButton.strokeColor = UIColor.white.withAlphaComponent(0.14)
+        overlayContinueButton.fillColor = UIColor(hex: "14142A").withAlphaComponent(0.96)
+        overlayContinueButton.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.16)
         overlayContinueButton.lineWidth = 1
         overlayContinueButton.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset - 60)
         overlayContinueButton.zPosition = 201
@@ -591,6 +685,7 @@ final class GameScene: SKScene {
                 overlayDetailLabel.text = gap == 0 ? VexloStrings.Overlay.oneCleanerRun : VexloStrings.Overlay.gapToBest(gap)
             }
         }
+        applyOverlayResultVisualState()
         layoutOverlayActions()
     }
 
@@ -679,13 +774,13 @@ final class GameScene: SKScene {
         syncUtilitySurface()
     }
 
-    private func animateLabelUpdate(_ label: SKLabelNode) {
+    private func animateLabelUpdate(_ label: SKLabelNode, emphasis: CGFloat = 1.0) {
         label.removeAllActions()
         guard !prefersReducedMotion else { return }
-        label.setScale(0.97)
-        label.alpha = 0.88
+        label.setScale(0.965 - min(0.025, (emphasis - 1) * 0.02))
+        label.alpha = 0.86 + min(0.08, (emphasis - 1) * 0.05)
         label.run(.group([
-            .scale(to: 1.0, duration: 0.14),
+            .scale(to: emphasis, duration: 0.14),
             .fadeAlpha(to: 1.0, duration: 0.14)
         ]))
     }
@@ -794,13 +889,9 @@ final class GameScene: SKScene {
                 let coord = HexCoordinate(col, row)
                 guard let node = cellNodes[coord] else { continue }
                 if let color = engine.board.color(at: coord) {
-                    node.fillColor = color
-                    node.strokeColor = UIColor(white: 1, alpha: 0.25)
-                    node.lineWidth = 1.2
+                    applyFilledCellStyle(node, color: color)
                 } else {
-                    node.fillColor = UIColor(white: 1, alpha: 0.03)
-                    node.strokeColor = UIColor(white: 1, alpha: 0.06)
-                    node.lineWidth = 0.8
+                    applyEmptyCellStyle(node)
                 }
             }
         }
@@ -815,10 +906,11 @@ final class GameScene: SKScene {
         overlayScoreLabel.text = "\(score)"
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
         if best != lastBestValue {
-            animateLabelUpdate(bestLabel)
+            animateLabelUpdate(bestLabel, emphasis: 1.025)
         }
         if score != lastScoreValue {
-            animateLabelUpdate(scoreLabel)
+            let scoreEmphasis: CGFloat = score > lastScoreValue && engine.scoreEngine.combo > 1 ? 1.03 : 1.0
+            animateLabelUpdate(scoreLabel, emphasis: scoreEmphasis)
         }
         lastBestValue = best
         lastScoreValue = score
@@ -1466,27 +1558,30 @@ final class GameScene: SKScene {
             !MonetizationService.shared.capabilities.supporterOwned &&
             !isPresentingSupporterPurchase
         utilityRestoreLabel.isHidden = !canRestore
-        utilityRestoreLabel.alpha = canRestore ? 0.72 : 0
+        utilityRestoreLabel.alpha = canRestore ? 0.68 : 0
 
         let canExport = AnalyticsService.shared.isTesterExportAvailable
         utilityExportLabel.isHidden = !canExport
-        utilityExportLabel.alpha = canExport ? 0.64 : 0
+        utilityExportLabel.alpha = canExport ? 0.58 : 0
 
-        utilityButton.fillColor = UIColor.white.withAlphaComponent(isUtilityPresented ? 0.09 : 0.05)
-        utilityButton.strokeColor = UIColor.white.withAlphaComponent(isUtilityPresented ? 0.18 : 0.1)
+        utilityButton.fillColor = UIColor(hex: "16162E").withAlphaComponent(isUtilityPresented ? 0.97 : 0.9)
+        utilityButton.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(isUtilityPresented ? 0.22 : 0.14)
+        if let utilityGlow = utilityButton.childNode(withName: "utility.glow") as? SKShapeNode {
+            utilityGlow.fillColor = UIColor(hex: "A8B4FF").withAlphaComponent(isUtilityPresented ? 0.052 : 0.03)
+        }
         layoutUtilitySurface()
     }
 
     private func layoutUtilitySurface() {
         let metrics = layoutMetrics
         let panelWidth = metrics.utilityPanelWidth
-        let leftX = -panelWidth * 0.5 + 16
+        let leftX = -panelWidth * 0.5 + 17
         let visibleRows = [utilitySoundLabel, utilityHapticsLabel, utilitySupporterLabel, utilityRestoreLabel, utilityExportLabel]
             .filter { !$0.isHidden }
         let rowHeight = metrics.utilityRowHeight
         let topInset = metrics.utilityPanelTopInset
         let bottomInset = metrics.utilityPanelBottomInset
-        let panelHeight = max(56, topInset + CGFloat(visibleRows.count) * rowHeight + bottomInset)
+        let panelHeight = max(58, topInset + CGFloat(visibleRows.count) * rowHeight + bottomInset)
         let buttonPosition = utilityButton.position
         let maxPanelX = size.width - layoutMetrics.sideInset - panelWidth * 0.5
         let targetX = min(buttonPosition.x - panelWidth * 0.5 + 16, maxPanelX)
@@ -1586,7 +1681,7 @@ final class GameScene: SKScene {
                 preview.position = .zero
                 slot.addChild(preview)
                 trayPreviews[i] = preview
-                slot.alpha = 1
+                applyTraySlotStyle(slot, occupied: true)
                 if canShowReroll(for: i) {
                     nextVisibleRerollOfferSlots.insert(i)
                     if !visibleRerollOfferSlots.contains(i) {
@@ -1601,7 +1696,7 @@ final class GameScene: SKScene {
                     rerollBadges[i] = badge
                 }
             } else {
-                slot.alpha = 0.5
+                applyTraySlotStyle(slot, occupied: false)
             }
         }
         visibleRerollOfferSlots = nextVisibleRerollOfferSlots
@@ -1620,11 +1715,19 @@ final class GameScene: SKScene {
         let offsetY = (minY + maxY) * 0.5
         for center in centers {
             let hex = SKShapeNode(path: HexGeometry.hexPath(radius: r - 0.5))
-            hex.fillColor = piece.color
-            hex.strokeColor = UIColor(white: 1, alpha: 0.12)
-            hex.lineWidth = 0.5
-            hex.position = CGPoint(x: center.x - offsetX, y: center.y - offsetY)
+            let localCenter = CGPoint(x: center.x - offsetX, y: center.y - offsetY)
+            hex.name = "piece.hex"
+            applyPieceSurfaceStyle(hex, color: piece.color, emphasis: .tray)
+            hex.position = localCenter
             node.addChild(hex)
+
+            let glint = SKShapeNode(rectOf: CGSize(width: r * 0.92, height: 1.5), cornerRadius: 0.75)
+            glint.name = "piece.glint"
+            glint.fillColor = UIColor.white.withAlphaComponent(0.12)
+            glint.strokeColor = .clear
+            glint.position = CGPoint(x: localCenter.x, y: localCenter.y + r * 0.32)
+            glint.zPosition = 1
+            node.addChild(glint)
         }
         return node
     }
@@ -1633,11 +1736,18 @@ final class GameScene: SKScene {
         let node = SKNode()
         for center in pieceCenters(for: piece, radius: HexGeometry.radius) {
             let hex = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius - 1))
-            hex.fillColor = piece.color.withAlphaComponent(0.9)
-            hex.strokeColor = UIColor(white: 1, alpha: 0.2)
-            hex.lineWidth = 0.8
+            hex.name = "piece.hex"
+            applyPieceSurfaceStyle(hex, color: piece.color, emphasis: .dragNeutral)
             hex.position = center
             node.addChild(hex)
+
+            let glint = SKShapeNode(rectOf: CGSize(width: HexGeometry.radius * 1.22, height: 2), cornerRadius: 1)
+            glint.name = "piece.glint"
+            glint.fillColor = UIColor.white.withAlphaComponent(0.11)
+            glint.strokeColor = .clear
+            glint.position = CGPoint(x: center.x, y: center.y + HexGeometry.radius * 0.34)
+            glint.zPosition = 1
+            node.addChild(glint)
         }
         return node
     }
@@ -1862,9 +1972,27 @@ final class GameScene: SKScene {
         syncBoard()
         guard coords.allSatisfy({ engine.board.isValid($0) }) else { return }
         for coord in coords {
-            cellNodes[coord]?.fillColor = valid
-                ? UIColor(hex: "00B894").withAlphaComponent(0.5)
-                : UIColor(hex: "D63031").withAlphaComponent(0.4)
+            guard let node = cellNodes[coord] else { continue }
+            if valid {
+                node.fillColor = UIColor(hex: "9CE7D2").withAlphaComponent(0.24)
+                node.strokeColor = UIColor.white.withAlphaComponent(0.34)
+                node.lineWidth = 1.4
+                node.alpha = 1.0
+                if !prefersReducedMotion {
+                    node.setScale(1.02)
+                }
+            } else {
+                node.fillColor = UIColor(hex: "E8DFF7").withAlphaComponent(0.09)
+                node.strokeColor = UIColor.white.withAlphaComponent(0.16)
+                node.lineWidth = 0.9
+                node.alpha = 0.76
+                if !prefersReducedMotion {
+                    node.setScale(0.985)
+                }
+            }
+        }
+        if let dragNode, let piece = dragPiece {
+            applyDragSurfaceState(dragNode, color: piece.color, isValid: valid)
         }
     }
 
@@ -1880,25 +2008,38 @@ final class GameScene: SKScene {
             node.removeAllActions()
             let wait = SKAction.wait(forDuration: delay)
             let flash = SKAction.sequence([
+                SKAction.run {
+                    node.alpha = 1.0
+                    node.strokeColor = UIColor(hex: "DDE5FF").withAlphaComponent(0.34)
+                    node.lineWidth = 1.35
+                },
                 SKAction.group([
-                    SKAction.scale(to: prefersReducedMotion ? 1.0 : 1.16, duration: 0.06),
-                    SKAction.fadeAlpha(to: 0.96, duration: 0.06)
+                    SKAction.run {
+                        node.strokeColor = UIColor(hex: "F5F7FF").withAlphaComponent(0.48)
+                        node.fillColor = UIColor(hex: "DDE5FF").withAlphaComponent(0.2)
+                    },
+                    SKAction.scale(to: prefersReducedMotion ? 1.0 : 1.075, duration: 0.055),
+                    SKAction.fadeAlpha(to: 0.98, duration: 0.055)
                 ]),
                 SKAction.group([
-                    SKAction.scale(to: prefersReducedMotion ? 1.0 : 0.82, duration: 0.12),
-                    SKAction.fadeAlpha(to: 0.0, duration: 0.12)
+                    SKAction.run {
+                        node.fillColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.08)
+                        node.strokeColor = UIColor.white.withAlphaComponent(0.16)
+                        node.lineWidth = 0.9
+                    },
+                    SKAction.scale(to: prefersReducedMotion ? 1.0 : 0.9, duration: 0.095),
+                    SKAction.fadeAlpha(to: 0.0, duration: 0.095)
                 ]),
                 SKAction.run {
                     node.setScale(1.0)
                     node.alpha = 1.0
-                    node.fillColor = UIColor(white: 1, alpha: 0.03)
-                    node.strokeColor = UIColor(white: 1, alpha: 0.06)
+                    self.applyEmptyCellStyle(node)
                 }
             ])
             node.run(SKAction.sequence([wait, flash]))
-            delay += 0.04
+            delay += 0.035
         }
-        let total = delay + 0.18
+        let total = delay + 0.17
         run(SKAction.sequence([
             SKAction.wait(forDuration: total),
             SKAction.run(completion)
@@ -1935,6 +2076,159 @@ final class GameScene: SKScene {
         let width = label.frame.width
         guard width > maxWidth, width > 0 else { return }
         label.xScale = max(minimumScale, maxWidth / width)
+    }
+
+    private func applyEmptyCellStyle(_ node: SKShapeNode) {
+        node.fillColor = UIColor(hex: "DEE7FF").withAlphaComponent(0.054)
+        node.strokeColor = UIColor(hex: "F5F7FF").withAlphaComponent(0.115)
+        node.lineWidth = 0.95
+        node.alpha = 1.0
+        node.setScale(1.0)
+    }
+
+    private func applyFilledCellStyle(_ node: SKShapeNode, color: UIColor) {
+        applyPieceSurfaceStyle(node, color: color, emphasis: .board)
+    }
+
+    private func applyTraySlotStyle(_ slot: SKShapeNode, occupied: Bool) {
+        slot.alpha = occupied ? 1 : 0.92
+        slot.fillColor = occupied
+            ? UIColor(hex: "16162F").withAlphaComponent(0.96)
+            : UIColor(hex: "111124").withAlphaComponent(0.88)
+        slot.strokeColor = occupied
+            ? UIColor(hex: "303052").withAlphaComponent(0.92)
+            : UIColor(hex: "232342").withAlphaComponent(0.7)
+
+        if let inner = slot.childNode(withName: "slot.inner") as? SKShapeNode {
+            inner.alpha = occupied ? 1 : 0.7
+        }
+        if let sheen = slot.childNode(withName: "slot.sheen") as? SKShapeNode {
+            sheen.alpha = occupied ? 0.95 : 0.45
+        }
+        if let restMark = slot.childNode(withName: "slot.restMark") as? SKShapeNode {
+            restMark.isHidden = occupied
+            restMark.alpha = occupied ? 0 : 1
+        }
+    }
+
+    private enum PieceSurfaceEmphasis {
+        case tray
+        case board
+        case dragNeutral
+        case dragValid
+        case dragInvalid
+    }
+
+    private func applyPieceSurfaceStyle(_ node: SKShapeNode, color: UIColor, emphasis: PieceSurfaceEmphasis) {
+        switch emphasis {
+        case .tray:
+            node.fillColor = color.withAlphaComponent(0.98)
+            node.strokeColor = UIColor.white.withAlphaComponent(0.16)
+            node.lineWidth = 0.62
+            node.alpha = 1.0
+            node.setScale(1.0)
+        case .board:
+            node.fillColor = color.withAlphaComponent(0.97)
+            node.strokeColor = UIColor.white.withAlphaComponent(0.28)
+            node.lineWidth = 1.15
+            node.alpha = 1.0
+            node.setScale(1.0)
+        case .dragNeutral:
+            node.fillColor = color.withAlphaComponent(0.9)
+            node.strokeColor = UIColor.white.withAlphaComponent(0.24)
+            node.lineWidth = 0.95
+            node.alpha = 0.94
+            node.setScale(1.0)
+        case .dragValid:
+            node.fillColor = color.withAlphaComponent(0.96)
+            node.strokeColor = UIColor.white.withAlphaComponent(0.38)
+            node.lineWidth = 1.1
+            node.alpha = 1.0
+            node.setScale(prefersReducedMotion ? 1.0 : 1.015)
+        case .dragInvalid:
+            node.fillColor = color.withAlphaComponent(0.62)
+            node.strokeColor = UIColor.white.withAlphaComponent(0.1)
+            node.lineWidth = 0.78
+            node.alpha = 0.74
+            node.setScale(prefersReducedMotion ? 1.0 : 0.99)
+        }
+    }
+
+    private func applyDragSurfaceState(_ dragNode: SKNode, color: UIColor, isValid: Bool) {
+        for case let hex as SKShapeNode in dragNode.children where hex.name == "piece.hex" {
+            applyPieceSurfaceStyle(hex, color: color, emphasis: isValid ? .dragValid : .dragInvalid)
+        }
+        for case let glint as SKShapeNode in dragNode.children where glint.name == "piece.glint" {
+            glint.fillColor = UIColor.white.withAlphaComponent(isValid ? 0.14 : 0.05)
+            glint.alpha = isValid ? 1.0 : 0.7
+        }
+        dragNode.alpha = isValid ? 1.0 : 0.86
+    }
+
+    private func applyOverlayResultVisualState() {
+        let isDaily = engine.isDailyChallenge
+        let isSpecial = overlayBadgeLabel.text?.isEmpty == false
+
+        overlayCaptionLabel.fontColor = UIColor.white.withAlphaComponent(isDaily ? 0.46 : 0.39)
+        overlayDetailLabel.fontColor = UIColor.white.withAlphaComponent(isSpecial ? 0.64 : 0.54)
+
+        if isDaily {
+            overlayBadgeLabel.fontColor = UIColor(hex: "8EDFCB").withAlphaComponent(0.96)
+            overlayBadgeLabel.fontSize = 11
+            overlayDetailLabel.fontSize = 13
+            overlayScoreLabel.fontColor = UIColor(hex: "F8FBFF")
+        } else if isSpecial {
+            overlayBadgeLabel.fontColor = UIColor(hex: "B5A8FF").withAlphaComponent(0.98)
+            overlayBadgeLabel.fontSize = 12
+            overlayDetailLabel.fontSize = 13
+            overlayScoreLabel.fontColor = UIColor(hex: "FBF9FF")
+        } else {
+            overlayBadgeLabel.fontColor = UIColor(hex: "6C5CE7").withAlphaComponent(0.95)
+            overlayBadgeLabel.fontSize = 11
+            overlayDetailLabel.fontSize = 13
+            overlayScoreLabel.fontColor = UIColor.white
+        }
+    }
+
+    private func buildAtmosphere() {
+        children.filter {
+            guard let name = $0.name else { return false }
+            return name.hasPrefix("atmosphere.")
+        }.forEach { $0.removeFromParent() }
+
+        let center = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
+        let topGlow = SKShapeNode(rectOf: CGSize(width: size.width * 0.88, height: size.height * 0.36), cornerRadius: size.height * 0.12)
+        topGlow.name = "atmosphere.topGlow"
+        topGlow.fillColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.028)
+        topGlow.strokeColor = .clear
+        topGlow.position = CGPoint(x: center.x, y: size.height * 0.82)
+        topGlow.zPosition = -12
+        addChild(topGlow)
+
+        let boardAura = SKShapeNode(circleOfRadius: min(size.width, size.height) * 0.29)
+        boardAura.name = "atmosphere.boardAura"
+        boardAura.fillColor = UIColor(hex: "7A74F7").withAlphaComponent(0.022)
+        boardAura.strokeColor = .clear
+        boardAura.position = CGPoint(x: center.x, y: gridOrigin.y + HexGeometry.boardBounds(cols: cols, rows: rows).midY)
+        boardAura.zPosition = -11
+        addChild(boardAura)
+
+        let lowerVeil = SKShapeNode(rectOf: CGSize(width: size.width * 1.08, height: size.height * 0.24), cornerRadius: size.height * 0.08)
+        lowerVeil.name = "atmosphere.lowerVeil"
+        lowerVeil.fillColor = UIColor.black.withAlphaComponent(0.12)
+        lowerVeil.strokeColor = .clear
+        lowerVeil.position = CGPoint(x: center.x, y: size.height * 0.14)
+        lowerVeil.zPosition = -10
+        addChild(lowerVeil)
+
+        let brandFacet = SKShapeNode(path: HexGeometry.hexPath(radius: size.height < 760 ? 7 : 8))
+        brandFacet.name = "atmosphere.brandFacet"
+        brandFacet.fillColor = UIColor(hex: "C7D0FF").withAlphaComponent(0.035)
+        brandFacet.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.08)
+        brandFacet.lineWidth = 0.8
+        brandFacet.position = CGPoint(x: size.width * 0.5 + (size.height < 760 ? 58 : 64), y: layoutMetrics.titleAccentY + 1)
+        brandFacet.zPosition = -1
+        addChild(brandFacet)
     }
 
     private func updateAccessibilitySurfaces() {

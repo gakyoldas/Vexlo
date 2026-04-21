@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		065662142F97607800744C34 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 065662132F97607800744C34 /* WidgetKit.framework */; };
+		065662162F97607800744C34 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 065662152F97607800744C34 /* SwiftUI.framework */; };
+		065662232F97607A00744C34 /* VexloWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 065662112F97607800744C34 /* VexloWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		065662212F97607A00744C34 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06B1A8B62F9411630056949C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 065662102F97607800744C34;
+			remoteInfo = VexloWidgetExtension;
+		};
 		06B1A8D82F9411650056949C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 06B1A8B62F9411630056949C /* Project object */;
@@ -23,14 +36,38 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		065662282F97607A00744C34 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				065662232F97607A00744C34 /* VexloWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		065660C32F96D7CA00744C34 /* Vexlo.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Vexlo.xctestplan; sourceTree = "<group>"; };
+		065662112F97607800744C34 /* VexloWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = VexloWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		065662132F97607800744C34 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		065662152F97607800744C34 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		06B1A8BE2F9411630056949C /* Vexlo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Vexlo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B1A8D72F9411650056949C /* VexloTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VexloTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		06B1A8E12F9411650056949C /* VexloUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VexloUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		065662272F97607A00744C34 /* Exceptions for "VexloWidget" folder in "VexloWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 065662102F97607800744C34 /* VexloWidgetExtension */;
+		};
 		06B1A8E92F9411650056949C /* Exceptions for "Vexlo" folder in "Vexlo" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -41,6 +78,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		065662172F97607800744C34 /* VexloWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				065662272F97607A00744C34 /* Exceptions for "VexloWidget" folder in "VexloWidgetExtension" target */,
+			);
+			path = VexloWidget;
+			sourceTree = "<group>";
+		};
 		06B1A8C02F9411630056949C /* Vexlo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -57,6 +102,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0656620E2F97607800744C34 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				065662162F97607800744C34 /* SwiftUI.framework in Frameworks */,
+				065662142F97607800744C34 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		06B1A8BB2F9411630056949C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -81,12 +135,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		065662122F97607800744C34 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				065662132F97607800744C34 /* WidgetKit.framework */,
+				065662152F97607800744C34 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		06B1A8B52F9411630056949C = {
 			isa = PBXGroup;
 			children = (
 				065660C32F96D7CA00744C34 /* Vexlo.xctestplan */,
 				06B1A8C02F9411630056949C /* Vexlo */,
 				F0A100012F00000100000001 /* VexloTests */,
+				065662172F97607800744C34 /* VexloWidget */,
+				065662122F97607800744C34 /* Frameworks */,
 				06B1A8BF2F9411630056949C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -97,6 +162,7 @@
 				06B1A8BE2F9411630056949C /* Vexlo.app */,
 				06B1A8D72F9411650056949C /* VexloTests.xctest */,
 				06B1A8E12F9411650056949C /* VexloUITests.xctest */,
+				065662112F97607800744C34 /* VexloWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -104,6 +170,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		065662102F97607800744C34 /* VexloWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 065662242F97607A00744C34 /* Build configuration list for PBXNativeTarget "VexloWidgetExtension" */;
+			buildPhases = (
+				0656620D2F97607800744C34 /* Sources */,
+				0656620E2F97607800744C34 /* Frameworks */,
+				0656620F2F97607800744C34 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				065662172F97607800744C34 /* VexloWidget */,
+			);
+			name = VexloWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = VexloWidgetExtension;
+			productReference = 065662112F97607800744C34 /* VexloWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		06B1A8BD2F9411630056949C /* Vexlo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 06B1A8EA2F9411650056949C /* Build configuration list for PBXNativeTarget "Vexlo" */;
@@ -111,10 +199,12 @@
 				06B1A8BA2F9411630056949C /* Sources */,
 				06B1A8BB2F9411630056949C /* Frameworks */,
 				06B1A8BC2F9411630056949C /* Resources */,
+				065662282F97607A00744C34 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				065662222F97607A00744C34 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				06B1A8C02F9411630056949C /* Vexlo */,
@@ -179,6 +269,9 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					065662102F97607800744C34 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
 					06B1A8BD2F9411630056949C = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -209,11 +302,19 @@
 				06B1A8BD2F9411630056949C /* Vexlo */,
 				06B1A8D62F9411650056949C /* VexloTests */,
 				06B1A8E02F9411650056949C /* VexloUITests */,
+				065662102F97607800744C34 /* VexloWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0656620F2F97607800744C34 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		06B1A8BC2F9411630056949C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -238,6 +339,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0656620D2F97607800744C34 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		06B1A8BA2F9411630056949C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -262,6 +370,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		065662222F97607A00744C34 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 065662102F97607800744C34 /* VexloWidgetExtension */;
+			targetProxy = 065662212F97607A00744C34 /* PBXContainerItemProxy */;
+		};
 		06B1A8D92F9411650056949C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 06B1A8BD2F9411630056949C /* Vexlo */;
@@ -275,6 +388,66 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		065662252F97607A00744C34 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T447J5CVBK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VexloWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VexloWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.northfallstudio.Vexlo.VexloWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		065662262F97607A00744C34 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T447J5CVBK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VexloWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = VexloWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.northfallstudio.Vexlo.VexloWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		06B1A8EB2F9411650056949C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -553,6 +726,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		065662242F97607A00744C34 /* Build configuration list for PBXNativeTarget "VexloWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				065662252F97607A00744C34 /* Debug */,
+				065662262F97607A00744C34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		06B1A8B92F9411630056949C /* Build configuration list for PBXProject "Vexlo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

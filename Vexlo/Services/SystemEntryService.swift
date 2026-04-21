@@ -5,6 +5,20 @@ enum SystemEntryRoute {
     case resumeLastRun
 }
 
+extension SystemEntryRoute {
+    init?(url: URL) {
+        guard url.scheme == "vexlo" else { return nil }
+        switch url.host {
+        case "daily":
+            self = .todayChallenge
+        case "resume":
+            self = .resumeLastRun
+        default:
+            return nil
+        }
+    }
+}
+
 final class SystemEntryService {
     static let shared = SystemEntryService()
 
@@ -39,6 +53,11 @@ final class SystemEntryService {
     func queue(_ route: SystemEntryRoute) {
         pendingRoute = route
         flushPendingRouteIfNeeded()
+    }
+
+    func queue(url: URL) {
+        guard let route = SystemEntryRoute(url: url) else { return }
+        queue(route)
     }
 
     func markRunActive(mode: GameEngine.RunMode) {

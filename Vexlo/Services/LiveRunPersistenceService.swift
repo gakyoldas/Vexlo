@@ -35,6 +35,7 @@ final class LiveRunPersistenceService {
         guard data != cachedData else { return }
         defaults.set(data, forKey: Keys.snapshot)
         cachedData = data
+        WidgetSurfaceService.shared.publishLiveRun(snapshot)
     }
 
     func load() -> GameEngine.LiveRunSnapshot? {
@@ -50,5 +51,6 @@ final class LiveRunPersistenceService {
     func clear() {
         defaults.removeObject(forKey: Keys.snapshot)
         cachedData = nil
+        WidgetSurfaceService.shared.clearResumableRun()
     }
 }

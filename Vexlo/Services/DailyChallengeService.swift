@@ -20,26 +20,29 @@ final class DailyChallengeService {
     static let shared = DailyChallengeService()
 
     private enum Keys {
-        static let bestDayID = "nf_vexlo_daily_best_day_id"
-        static let bestScore = "nf_vexlo_daily_best_score"
-        static let completedDayID = "nf_vexlo_daily_completed_day_id"
-        static let streakCount = "nf_vexlo_daily_streak_count"
-        static let lastStreakDayID = "nf_vexlo_daily_last_streak_day_id"
+        static let bestDayID = ICloudProgressSyncService.Keys.dailyBestDayID
+        static let bestScore = ICloudProgressSyncService.Keys.dailyBestScore
+        static let completedDayID = ICloudProgressSyncService.Keys.dailyCompletedDayID
+        static let streakCount = ICloudProgressSyncService.Keys.dailyStreakCount
+        static let lastStreakDayID = ICloudProgressSyncService.Keys.dailyLastStreakDayID
     }
 
     private let defaults: UserDefaults
     private let calendar: Calendar
+    private let syncService: ICloudProgressSyncService?
 
     private init() {
         defaults = .standard
         var calendar = Calendar.autoupdatingCurrent
         calendar.timeZone = .autoupdatingCurrent
         self.calendar = calendar
+        syncService = .shared
     }
 
     init(defaults: UserDefaults, calendar: Calendar) {
         self.defaults = defaults
         self.calendar = calendar
+        syncService = nil
     }
 
     func refreshForCurrentDay() {
@@ -48,6 +51,8 @@ final class DailyChallengeService {
         if visibleStreak != defaults.integer(forKey: Keys.streakCount) {
             defaults.set(visibleStreak, forKey: Keys.streakCount)
         }
+        syncService?.mergeDailyProgress(currentDayID: today)
+        WidgetSurfaceService.shared.publishDailyStatus(status(for: today))
     }
 
     func currentStatus() -> DailyChallengeStatus {
@@ -110,13 +115,17 @@ final class DailyChallengeService {
             streak = max(1, defaults.integer(forKey: Keys.streakCount))
         }
 
-        return DailyChallengeCompletion(
+        let completion = DailyChallengeCompletion(
             dayID: dayID,
             score: score,
             isNewBestToday: isNewBest,
             todayBest: updatedBest,
             streakCount: max(streak, currentStreakCount(for: currentDayID()))
         )
+        let currentDayID = currentDayID()
+        syncService?.publishDailyProgress(currentDayID: currentDayID)
+        WidgetSurfaceService.shared.publishDailyStatus(status(for: currentDayID))
+        return completion
     }
 
     func currentDayID() -> String {

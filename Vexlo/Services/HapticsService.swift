@@ -4,7 +4,7 @@ import UIKit
 final class HapticsService {
     static let shared = HapticsService()
     private enum Keys {
-        static let hapticsEnabled = "nf_vexlo_haptics_enabled"
+        static let hapticsEnabled = ICloudProgressSyncService.Keys.hapticsEnabled
     }
 
     private let defaults = UserDefaults.standard
@@ -25,7 +25,10 @@ final class HapticsService {
 
     var isEnabled: Bool {
         get { defaults.object(forKey: Keys.hapticsEnabled) as? Bool ?? true }
-        set { defaults.set(newValue, forKey: Keys.hapticsEnabled) }
+        set {
+            defaults.set(newValue, forKey: Keys.hapticsEnabled)
+            ICloudProgressSyncService.shared.publishBooleanPreference(key: Keys.hapticsEnabled, value: newValue)
+        }
     }
 
     var isSupported: Bool {

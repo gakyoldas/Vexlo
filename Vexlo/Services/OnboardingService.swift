@@ -4,18 +4,21 @@ final class OnboardingService {
     static let shared = OnboardingService()
 
     private enum Keys {
-        static let placementLearned = "nf_vexlo_onboarding_placement_learned"
-        static let clearLearned = "nf_vexlo_onboarding_clear_learned"
+        static let placementLearned = ICloudProgressSyncService.Keys.onboardingPlacementLearned
+        static let clearLearned = ICloudProgressSyncService.Keys.onboardingClearLearned
     }
 
     private let defaults: UserDefaults
+    private let syncService: ICloudProgressSyncService?
 
     private init() {
         defaults = .standard
+        syncService = .shared
     }
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
+        syncService = nil
     }
 
     var shouldShowPlacementHint: Bool {
@@ -28,9 +31,11 @@ final class OnboardingService {
 
     func markPlacementLearned() {
         defaults.set(true, forKey: Keys.placementLearned)
+        syncService?.publishLearnedFlag(key: Keys.placementLearned)
     }
 
     func markClearLearned() {
         defaults.set(true, forKey: Keys.clearLearned)
+        syncService?.publishLearnedFlag(key: Keys.clearLearned)
     }
 }

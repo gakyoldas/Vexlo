@@ -3,6 +3,7 @@ import Foundation
 enum SystemEntryRoute {
     case todayChallenge
     case resumeLastRun
+    case scoreSprint
 }
 
 extension SystemEntryRoute {
@@ -13,6 +14,23 @@ extension SystemEntryRoute {
             self = .todayChallenge
         case "resume":
             self = .resumeLastRun
+        case "event":
+            self.init(eventURL: url)
+        default:
+            return nil
+        }
+    }
+
+    private init?(eventURL url: URL) {
+        let landingType = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first { $0.name == "type" || $0.name == "landing" }?
+            .value ?? url.pathComponents.dropFirst().first
+        switch landingType {
+        case "score-sprint", "score_sprint":
+            self = .scoreSprint
+        case "daily-feature", "daily_feature":
+            self = .todayChallenge
         default:
             return nil
         }

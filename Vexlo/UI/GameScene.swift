@@ -276,6 +276,9 @@ final class GameScene: SKScene {
 
         bestLabel = label("0", size: 28, color: UIColor(hex: "6C5CE7"), align: .left, weight: true)
         bestLabel.name = "hud.best"
+        let roundedFonts = ["SFProRounded-Bold", "SFProRounded-Semibold"]
+        let resolvedFont = roundedFonts.first { UIFont(name: $0, size: 1) != nil } ?? "SFProDisplay-Bold"
+        bestLabel.fontName = resolvedFont
         bestLabel.position = CGPoint(x: metrics.sideInset, y: metrics.topY - 20)
         addChild(bestLabel)
 
@@ -307,6 +310,7 @@ final class GameScene: SKScene {
 
         scoreLabel = label("0", size: 28, color: .white, align: .right, weight: true)
         scoreLabel.name = "hud.score"
+        scoreLabel.fontName = resolvedFont
         scoreLabel.position = CGPoint(x: size.width - metrics.sideInset - metrics.utilityRadius * 2 - 12, y: metrics.topY - 20)
         addChild(scoreLabel)
 
@@ -435,7 +439,7 @@ final class GameScene: SKScene {
             CGPoint(x: boardRect.maxX - 30, y: boardRect.minY + 30)
         ]
         for (index, position) in signatureFacetPositions.enumerated() {
-            if index == 0 { continue }
+            if index == 0 || index == 1 { continue }
             let facet = SKShapeNode(path: HexGeometry.hexPath(radius: signatureFacetRadius))
             facet.name = "board.signatureFacet.\(index)"
             facet.fillColor = UIColor(hex: index == 0 ? "C7D0FF" : "7A74F7").withAlphaComponent(0.032)
@@ -450,6 +454,14 @@ final class GameScene: SKScene {
             for row in 0..<rows {
                 let coord = HexCoordinate(col, row)
                 let node = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius - 1))
+                let highlight = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius * 0.72))
+                highlight.name = "highlight"
+                highlight.fillColor = UIColor(white: 1, alpha: 0.09)
+                highlight.strokeColor = .clear
+                highlight.lineWidth = 0
+                highlight.position = CGPoint(x: 0, y: HexGeometry.radius * 0.18)
+                highlight.zPosition = 1
+                node.addChild(highlight)
                 applyEmptyCellStyle(node)
                 node.position = HexGeometry.pixelCenter(for: coord, origin: gridOrigin)
                 addChild(node)
@@ -540,7 +552,9 @@ final class GameScene: SKScene {
         overlayNode.addChild(overlayCaptionLabel)
 
         overlayScoreLabel = label("0", size: metrics.overlayScoreFontSize, color: .white, align: .center, weight: true)
-        overlayScoreLabel.fontName = "SFProRounded-Heavy"
+        let heavyFonts = ["SFProRounded-Black", "SFProDisplay-Black", ".SFUI-Black"]
+        let resolvedFont = heavyFonts.first { UIFont(name: $0, size: 1) != nil } ?? "SFProDisplay-Bold"
+        overlayScoreLabel.fontName = resolvedFont
         overlayScoreLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayScoreOffset)
         overlayNode.addChild(overlayScoreLabel)
 
@@ -736,7 +750,7 @@ final class GameScene: SKScene {
             } else {
                 overlayBadgeLabel.text = ""
                 let gap = max(0, best - score)
-                overlayDetailLabel.text = gap == 0 ? VexloStrings.Overlay.oneCleanerRun : VexloStrings.Overlay.gapToBest(gap)
+                overlayDetailLabel.text = gap == 0 ? "" : VexloStrings.Overlay.gapToBest(gap)
             }
         }
         applyOverlayResultVisualState()
@@ -976,9 +990,9 @@ final class GameScene: SKScene {
         bestLabel.text = "\(best)"
         scoreLabel.text = "\(score)"
         overlayScoreLabel.text = "\(score)"
-        bestCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.31)
+        bestCaptionLabel.fontColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.7)
         bestLabel.fontColor = UIColor(hex: "6C5CE7")
-        scoreCaptionLabel.fontColor = UIColor.white.withAlphaComponent(0.31)
+        scoreCaptionLabel.fontColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.7)
         scoreLabel.fontColor = .white
         syncPublicCaptureMetricContextIfNeeded()
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
@@ -1245,6 +1259,7 @@ final class GameScene: SKScene {
             modeLabel.text = VexloStrings.HUD.todaysChallenge
             modeLabel.alpha = 0.5
         }
+        if !engine.isDailyChallenge { modeLabel.alpha = 0 }
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
     }
 
@@ -1945,6 +1960,8 @@ final class GameScene: SKScene {
                 slot.addChild(preview)
                 trayPreviews[i] = preview
                 applyTraySlotStyle(slot, occupied: true)
+                slot.strokeColor = UIColor(hex: "2E2E5A")
+                slot.alpha = 1.0
                 if canShowReroll(for: i) {
                     nextVisibleRerollOfferSlots.insert(i)
                     if !visibleRerollOfferSlots.contains(i) {
@@ -1960,6 +1977,8 @@ final class GameScene: SKScene {
                 }
             } else {
                 applyTraySlotStyle(slot, occupied: false)
+                slot.strokeColor = UIColor(hex: "1C1C3A")
+                slot.alpha = 0.45
             }
         }
         visibleRerollOfferSlots = nextVisibleRerollOfferSlots
@@ -2406,8 +2425,8 @@ final class GameScene: SKScene {
     }
 
     private func applyEmptyCellStyle(_ node: SKShapeNode) {
-        node.fillColor = UIColor(hex: engine.isDailyChallenge ? "EAF2FF" : "DEE7FF").withAlphaComponent(engine.isDailyChallenge ? 0.058 : 0.054)
-        node.strokeColor = UIColor(hex: engine.isDailyChallenge ? "DDE6FF" : "F5F7FF").withAlphaComponent(engine.isDailyChallenge ? 0.108 : 0.115)
+        node.fillColor = UIColor(white: 1, alpha: 0.055)
+        node.strokeColor = UIColor(white: 1, alpha: 0.13)
         node.lineWidth = 0.95
         node.alpha = 1.0
         node.setScale(1.0)

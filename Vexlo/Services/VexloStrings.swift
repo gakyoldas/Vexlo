@@ -29,6 +29,7 @@ enum VexloStrings {
         static let supporterOwned = localized("overlay.supporter_owned", value: "Supporter Owned")
         static let challengeFriends = localized("overlay.challenge_friends", value: "Challenge Friends")
         static let playTogether = localized("overlay.play_together", value: "Play Together")
+        static let share = localized("overlay.share", value: "Share")
         static let oneCleanerRun = localized("overlay.one_cleaner_run", value: "Tied Best")
 
         static func streak(_ value: Int) -> String {
@@ -67,6 +68,8 @@ enum VexloStrings {
         static let challengeFriendsHint = localized("accessibility.challenge_friends_hint", value: "Opens the Game Center challenge flow")
         static let playTogether = localized("accessibility.play_together", value: "Play Together")
         static let playTogetherHint = localized("accessibility.play_together_hint", value: "Opens the Game Center activity")
+        static let shareResult = localized("accessibility.share_result", value: "Share Result")
+        static let shareResultHint = localized("accessibility.share_result_hint", value: "Opens the native share sheet")
         static let continueRunHint = localized("accessibility.continue_run_hint", value: "Watch a rewarded video to continue this run when available")
         static let playAgainHint = localized("accessibility.play_again_hint", value: "Starts a new run")
         static let supporterPackHint = localized("accessibility.supporter_pack_hint", value: "Unlocks ad-free continue and reroll when available")

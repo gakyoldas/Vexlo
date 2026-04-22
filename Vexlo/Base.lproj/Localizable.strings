@@ -20,6 +20,7 @@
 "overlay.supporter_owned" = "Supporter Owned";
 "overlay.challenge_friends" = "Challenge Friends";
 "overlay.play_together" = "Play Together";
+"overlay.share" = "Share";
 "overlay.one_cleaner_run" = "One cleaner run does it";
 "overlay.streak_format" = "Streak %d";
 "overlay.gap_to_best" = "%d to best";
@@ -46,6 +47,8 @@
 "accessibility.challenge_friends_hint" = "Opens the Game Center challenge flow";
 "accessibility.play_together" = "Play Together";
 "accessibility.play_together_hint" = "Opens the Game Center activity";
+"accessibility.share_result" = "Share Result";
+"accessibility.share_result_hint" = "Opens the native share sheet";
 "accessibility.continue_run_hint" = "Watch a rewarded video to continue this run when available";
 "accessibility.play_again_hint" = "Starts a new run";
 "accessibility.supporter_pack_hint" = "Unlocks ad-free continue and reroll when available";

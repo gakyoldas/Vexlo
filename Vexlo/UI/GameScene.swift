@@ -1283,17 +1283,6 @@ final class GameScene: SKScene {
             accent.fillColor = UIColor(hex: isDaily ? "C7D0FF" : "7A74F7").withAlphaComponent(isDaily ? 0.24 : 0.3)
             accent.strokeColor = UIColor(hex: isDaily ? "F4F3FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.07 : 0.08)
         }
-        if let titleFacet = childNode(withName: "hud.titleFacet") as? SKShapeNode {
-            titleFacet.fillColor = UIColor(hex: isDaily ? "E8EDFF" : "C7D0FF").withAlphaComponent(isDaily ? 0.048 : 0.055)
-            titleFacet.strokeColor = UIColor(hex: isDaily ? "DDE6FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.085 : 0.1)
-        }
-        for index in 0..<2 {
-            guard let facet = childNode(withName: "board.signatureFacet.\(index)") as? SKShapeNode else { continue }
-            let dailyHex = index == 0 ? "E8EDFF" : "BFD4FF"
-            let normalHex = index == 0 ? "C7D0FF" : "7A74F7"
-            facet.fillColor = UIColor(hex: isDaily ? dailyHex : normalHex).withAlphaComponent(isDaily ? 0.038 : 0.032)
-            facet.strokeColor = UIColor(hex: isDaily ? "DDE6FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.078 : 0.07)
-        }
     }
 
     private func beginSceneRun(mode: GameEngine.RunMode) {

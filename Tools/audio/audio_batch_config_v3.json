@@ -1,0 +1,159 @@
+{
+  "model_id": "eleven_text_to_sound_v2",
+  "default_output_format": "pcm_48000",
+  "events": [
+    {
+      "event": "piecePickup",
+      "canonical_output_filename": "sfx_pickup.wav",
+      "prompt": "Professional foley: single dark basalt hex tile lifted from matte resin surface. Clean sharp mineral contact (30ms attack), warm low-mid resonance at 120 Hz, fast exponential decay within 180ms. Matte texture, dark timbre. No ringing, no echo, no plastic click, no ceramic brightness. One-shot under 0.5 seconds.",
+      "duration_seconds": 0.55,
+      "prompt_influence": 0.62,
+      "candidates": 6,
+      "trim_range_ms": { "min": 60, "max": 240 }
+    },
+    {
+      "event": "validPlace",
+      "canonical_output_filename": "sfx_piece_place.wav",
+      "prompt": "Professional foley: dark basalt hex tile placed precisely on matte resin surface. Weighted mineral contact with satisfying low-mid thud at 150 Hz, clean articulate transient, natural exponential decay within 250ms. Strategic completion feel. No bright ding, no toy pop, no resonant ring, no ceramic clatter. One-shot.",
+      "duration_seconds": 0.7,
+      "prompt_influence": 0.62,
+      "candidates": 6,
+      "trim_range_ms": { "min": 120, "max": 300 }
+    },
+    {
+      "event": "invalidPlace",
+      "canonical_output_filename": "sfx_invalid.wav",
+      "prompt": "Professional foley: dark basalt hex tile touching matte resin surface without locking. Softer and more muted than valid placement, dampened mineral friction, no sharp impact. Gently corrective, dark timbre, decay within 200ms. Lower energy than placement. No buzzer, no harsh click, no cartoon refusal sound. One-shot.",
+      "duration_seconds": 0.6,
+      "prompt_influence": 0.60,
+      "candidates": 6,
+      "trim_range_ms": { "min": 100, "max": 260 }
+    },
+    {
+      "event": "lineClear",
+      "canonical_output_filename": "sfx_line_clear.wav",
+      "prompt": "Professional foley: row of dark basalt hex tiles releasing simultaneously from matte surface. Collective warm mineral resonance with low-mid bloom at 150 Hz, controlled harmonic tail within 300ms, smooth collective departure. Calm strategic reward. No bright ring, no metallic shimmer, no fanfare, no cascade sound. One-shot.",
+      "duration_seconds": 0.7,
+      "prompt_influence": 0.58,
+      "candidates": 6,
+      "trim_range_ms": { "min": 160, "max": 380 }
+    },
+    {
+      "event": "comboX2",
+      "canonical_output_filename": "sfx_combo_x2.wav",
+      "prompt": "Professional foley: two rows of dark basalt hex tiles releasing together. Warm dual-layer mineral bloom measurably fuller than single row clear, low-mid richness at 150-200 Hz, controlled sustain within 360ms. Same dark material family as line clear but with deeper body. No arcade energy, no bright attack, no casino feel. One-shot.",
+      "duration_seconds": 0.75,
+      "prompt_influence": 0.58,
+      "candidates": 6,
+      "trim_range_ms": { "min": 200, "max": 420 }
+    },
+    {
+      "event": "comboX3Plus",
+      "canonical_output_filename": "sfx_combo_x3_plus.wav",
+      "prompt": "Professional foley: multiple dark basalt hex tiles releasing together at full bloom. Deepest warm mineral resonance in reward family, confident low-mid peak at 180 Hz settling cleanly within 460ms. Richest strategic reward, same dark material at fullest expression. No cascade, no fanfare, no bright high frequencies, no triumphant tone. One-shot.",
+      "duration_seconds": 0.85,
+      "prompt_influence": 0.58,
+      "candidates": 6,
+      "trim_range_ms": { "min": 260, "max": 540 }
+    },
+    {
+      "event": "gameOver",
+      "canonical_output_filename": "sfx_game_over.wav",
+      "prompt": "Professional foley: final dark basalt tile settling into silence. Warm low-mid closing resonance at 110 Hz, fuller body than gameplay sounds, soft dignified session end with natural decay within 420ms. Non-punishing, reflective, composed. No defeat sting, no buzzer, no failure energy, no punishing tone. Dark mineral warmth. One-shot.",
+      "duration_seconds": 0.75,
+      "prompt_influence": 0.56,
+      "candidates": 6,
+      "trim_range_ms": { "min": 280, "max": 520 }
+    },
+    {
+      "event": "newBest",
+      "canonical_output_filename": "sfx_new_best.wav",
+      "prompt": "Professional foley: quiet personal achievement resonance. Dark basalt and warm resin material, gentle ascending harmonic bloom over 550ms, emotionally warm low-mid glow. Private recognition, never celebratory. Subtle upward harmonic shift, natural decay, dark timbre. No fanfare, never bright, never loud. The most personal sound in the set. One-shot.",
+      "duration_seconds": 1.0,
+      "prompt_influence": 0.56,
+      "candidates": 6,
+      "trim_range_ms": { "min": 400, "max": 800 }
+    },
+    {
+      "event": "dailyComplete",
+      "canonical_output_filename": "sfx_daily_complete.wav",
+      "prompt": "Professional foley: daily ritual completion tone. Dark basalt and resin at warmest expression, longer low-mid bloom over 650ms, ceremonial closure with natural settle. Warmer and more settled than game over, return-worthy resonance. Dark mineral warmth, clean tail. No triumph, no bright peak, no fanfare. Closing note of a daily practice. One-shot.",
+      "duration_seconds": 1.1,
+      "prompt_influence": 0.56,
+      "candidates": 6,
+      "trim_range_ms": { "min": 380, "max": 860 }
+    },
+    {
+      "event": "utilityOpen",
+      "canonical_output_filename": "sfx_utility_open.wav",
+      "prompt": "Professional foley: minimal dark ceramic panel opening. Quiet precise mineral contact, matte texture, clean decay within 180ms. Barely perceptible, premium restraint. No plastic, no bright pop, no app-like sound. One-shot under 350ms.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.58,
+      "candidates": 4,
+      "trim_range_ms": { "min": 80, "max": 260 }
+    },
+    {
+      "event": "utilityClose",
+      "canonical_output_filename": "sfx_utility_close.wav",
+      "prompt": "Professional foley: minimal dark ceramic panel closing. Stone settle marginally softer than open, quiet mineral contact, clean decay within 180ms. Slightly lower energy than open. Premium restraint. No plastic, no bright pop. One-shot under 350ms.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.58,
+      "candidates": 4,
+      "trim_range_ms": { "min": 80, "max": 260 }
+    },
+    {
+      "event": "toggleOn",
+      "canonical_output_filename": "sfx_toggle_on.wav",
+      "prompt": "Professional foley: tiny precise dark ceramic switch activation. Micro mineral tick with clean transient, sharp but quiet, warm low-mid body, decay within 100ms. Premium and exact. No plastic click, no bright tick. One-shot under 200ms.",
+      "duration_seconds": 0.45,
+      "prompt_influence": 0.60,
+      "candidates": 4,
+      "trim_range_ms": { "min": 60, "max": 190 }
+    },
+    {
+      "event": "toggleOff",
+      "canonical_output_filename": "sfx_toggle_off.wav",
+      "prompt": "Professional foley: tiny dark ceramic switch deactivation. Marginally softer micro mineral tick than on state, clean and precise, warm low-mid body, decay within 100ms. Slightly less energy than toggle on. No plastic click. One-shot under 200ms.",
+      "duration_seconds": 0.45,
+      "prompt_influence": 0.60,
+      "candidates": 4,
+      "trim_range_ms": { "min": 60, "max": 190 }
+    },
+    {
+      "event": "shareTap",
+      "canonical_output_filename": "sfx_share.wav",
+      "prompt": "Professional foley: single intentional dark ceramic surface tap. Quiet precise contact, matte texture, no resonant ring, clean decay within 160ms. Premium, no social app energy, no bright sparkle. One-shot under 300ms.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.58,
+      "candidates": 4,
+      "trim_range_ms": { "min": 80, "max": 240 }
+    },
+    {
+      "event": "startNewRunConfirm",
+      "canonical_output_filename": "sfx_new_run.wav",
+      "prompt": "Professional foley: deliberate dark basalt surface press confirming new session start. Single composed mineral contact, slightly fuller than a toggle, clean decay within 260ms. Fresh start energy without drama. No loud confirm, no bright click. One-shot under 450ms.",
+      "duration_seconds": 0.6,
+      "prompt_influence": 0.60,
+      "candidates": 4,
+      "trim_range_ms": { "min": 120, "max": 340 }
+    },
+    {
+      "event": "continueResume",
+      "canonical_output_filename": "sfx_continue.wav",
+      "prompt": "Professional foley: calm session resume signal. Dark basalt with slight warm upward resonance, supportive low-mid warmth returning player to gameplay, decay within 380ms. Composed and warm, not triumphant. No reward jingle, no bright tone. One-shot under 560ms.",
+      "duration_seconds": 0.75,
+      "prompt_influence": 0.58,
+      "candidates": 4,
+      "trim_range_ms": { "min": 180, "max": 440 }
+    },
+    {
+      "event": "rerollSuccess",
+      "canonical_output_filename": "sfx_reroll.wav",
+      "prompt": "Professional foley: clean dark ceramic refresh accent. Slight upward mineral motion, strategic option confirmed, matte texture with controlled decay within 260ms. Premium and restrained, no reward jingle, no bright ding. One-shot under 400ms.",
+      "duration_seconds": 0.6,
+      "prompt_influence": 0.60,
+      "candidates": 4,
+      "trim_range_ms": { "min": 100, "max": 300 }
+    }
+  ]
+}

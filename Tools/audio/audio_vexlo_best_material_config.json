@@ -1,0 +1,78 @@
+{
+  "model_id": "eleven_text_to_sound_v2",
+  "default_output_format": "pcm_48000",
+  "events": [
+    {
+      "event": "placeBody",
+      "canonical_output_filename": "material_place_body.wav",
+      "prompt": "Very short premium puzzle placement material. Soft rounded settle, tactile and confident, tiny weight, polished game feel, not metallic, not clicky, not scratchy, quick clean stop.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.82,
+      "candidates": 14,
+      "trim_range_ms": { "min": 40, "max": 140 }
+    },
+    {
+      "event": "invalidSoft",
+      "canonical_output_filename": "material_invalid_soft.wav",
+      "prompt": "Very short gentle puzzle refusal material. Soft no, kind pushback, not a punishment, clean and premium, not buzzy, not alarming, not harsh, quick neutral ending.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.82,
+      "candidates": 14,
+      "trim_range_ms": { "min": 40, "max": 140 }
+    },
+    {
+      "event": "clearResolve",
+      "canonical_output_filename": "material_clear_resolve.wav",
+      "prompt": "Short satisfying puzzle clear material. Clean release, neat resolution, elegant and gamey, lightly uplifting, premium mobile puzzle energy, no metallic shing, no scratch, no long ring.",
+      "duration_seconds": 0.65,
+      "prompt_influence": 0.84,
+      "candidates": 14,
+      "trim_range_ms": { "min": 70, "max": 190 }
+    },
+    {
+      "event": "comboGlow",
+      "canonical_output_filename": "material_combo_glow.wav",
+      "prompt": "Short rewarding combo material for a great puzzle game. Clear positive uplift, juicy and playful, controlled instrumental game feel, more rewarding than a clear, no casino jackpot, no harsh bright synth.",
+      "duration_seconds": 0.8,
+      "prompt_influence": 0.86,
+      "candidates": 14,
+      "trim_range_ms": { "min": 90, "max": 230 }
+    },
+    {
+      "event": "comboFlourish",
+      "canonical_output_filename": "material_combo_flourish.wav",
+      "prompt": "Short mastery combo flourish for a premium puzzle game. Stronger and wider than normal combo, instrumental and satisfying, expert move feeling, memorable but controlled, no anthem, no slot machine, no alarm tone.",
+      "duration_seconds": 0.9,
+      "prompt_influence": 0.86,
+      "candidates": 14,
+      "trim_range_ms": { "min": 110, "max": 270 }
+    },
+    {
+      "event": "recordLift",
+      "canonical_output_filename": "material_record_lift.wav",
+      "prompt": "Short new best achievement material. Personal success, warm instrumental lift, proud and memorable, premium game reward, no trophy jingle, no ad sting, no metallic sparkle, clean landing.",
+      "duration_seconds": 0.95,
+      "prompt_influence": 0.87,
+      "candidates": 14,
+      "trim_range_ms": { "min": 130, "max": 300 }
+    },
+    {
+      "event": "dailyAnthemSoft",
+      "canonical_output_filename": "material_daily_anthem_soft.wav",
+      "prompt": "Short daily completion reward material. Gentle ceremonial instrumental uplift, satisfying ritual ending, feels special and inviting, premium puzzle game success, no militaristic fanfare, no casino, calm finish.",
+      "duration_seconds": 1.05,
+      "prompt_influence": 0.87,
+      "candidates": 14,
+      "trim_range_ms": { "min": 150, "max": 340 }
+    },
+    {
+      "event": "runClosureWarm",
+      "canonical_output_filename": "material_run_closure_warm.wav",
+      "prompt": "Short game over closure material for a good puzzle game. Warm reflective ending, gentle reset feeling, encourages another run, no fail buzzer, no guilt, no dramatic drop, clean soft ending.",
+      "duration_seconds": 0.7,
+      "prompt_influence": 0.84,
+      "candidates": 14,
+      "trim_range_ms": { "min": 80, "max": 190 }
+    }
+  ]
+}

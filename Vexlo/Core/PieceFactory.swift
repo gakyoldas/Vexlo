@@ -93,6 +93,12 @@ enum PieceFactory {
         case pressure
     }
 
+    enum BoardCharacter: Int {
+        case open = 0      // glacial: relief-biased, spacious opening
+        case balanced = 1  // lucid: unchanged distribution
+        case focused = 2   // iris: pivot-biased, denser reading
+    }
+
     fileprivate struct TemplateProfile {
         let template: Template
         let size: Int
@@ -154,18 +160,20 @@ enum PieceFactory {
     static func openingBatch<R: RandomNumberGenerator>(
         count: Int,
         memory: inout GenerationMemory,
-        using generator: inout R
+        using generator: inout R,
+        boardCharacter: BoardCharacter = .balanced
     ) -> [HexPiece] {
-        makeBatch(count: count, occupiedCellCount: 0, opening: true, memory: &memory, using: &generator)
+        makeBatch(count: count, occupiedCellCount: 0, opening: true, boardCharacter: boardCharacter, memory: &memory, using: &generator)
     }
 
     static func randomBatch<R: RandomNumberGenerator>(
         count: Int,
         occupiedCellCount: Int,
         memory: inout GenerationMemory,
-        using generator: inout R
+        using generator: inout R,
+        boardCharacter: BoardCharacter = .balanced
     ) -> [HexPiece] {
-        makeBatch(count: count, occupiedCellCount: occupiedCellCount, opening: false, memory: &memory, using: &generator)
+        makeBatch(count: count, occupiedCellCount: occupiedCellCount, opening: false, boardCharacter: boardCharacter, memory: &memory, using: &generator)
     }
 
     static func rescueBatch(
@@ -232,6 +240,7 @@ enum PieceFactory {
         count: Int,
         occupiedCellCount: Int,
         opening: Bool,
+        boardCharacter: BoardCharacter = .balanced,
         memory: inout GenerationMemory,
         using generator: inout R
     ) -> [HexPiece] {
@@ -243,6 +252,7 @@ enum PieceFactory {
                 count: count,
                 occupiedCellCount: occupiedCellCount,
                 opening: opening,
+                boardCharacter: boardCharacter,
                 memory: memory,
                 using: &generator
             )
@@ -267,7 +277,7 @@ enum PieceFactory {
         template.id == "hook3"
     }
 
-    private static func weightedTemplates(for occupiedCellCount: Int, opening: Bool) -> [WeightedTemplate] {
+    private static func weightedTemplates(for occupiedCellCount: Int, opening: Bool, boardCharacter: BoardCharacter = .balanced) -> [WeightedTemplate] {
         templates.compactMap { template in
             let profile = profile(for: template)
             let size = profile.size
@@ -308,6 +318,28 @@ enum PieceFactory {
                     weight += occupiedCellCount < 8 ? -32 : (occupiedCellCount < 18 ? 8 : 2)
                 }
             }
+            switch boardCharacter {
+            case .open:
+                switch profile.role {
+                case .relief:
+                    weight += opening ? 12 : (occupiedCellCount < 18 ? 14 : 8)
+                case .pressure:
+                    weight = max(1, weight - (opening ? 8 : (occupiedCellCount < 8 ? 10 : 4)))
+                case .pivot:
+                    break
+                }
+            case .focused:
+                switch profile.role {
+                case .pivot:
+                    weight += opening ? 16 : (occupiedCellCount < 8 ? 16 : (occupiedCellCount < 18 ? 12 : 6))
+                case .pressure:
+                    weight += (!opening && occupiedCellCount >= 8 && occupiedCellCount < 18) ? 10 : 0
+                case .relief:
+                    break
+                }
+            case .balanced:
+                break
+            }
             return WeightedTemplate(template: template, weight: max(1, weight))
         }
     }
@@ -316,10 +348,11 @@ enum PieceFactory {
         count: Int,
         occupiedCellCount: Int,
         opening: Bool,
+        boardCharacter: BoardCharacter = .balanced,
         memory: GenerationMemory,
         using generator: inout R
     ) -> [TemplateProfile] {
-        var available = weightedTemplates(for: occupiedCellCount, opening: opening)
+        var available = weightedTemplates(for: occupiedCellCount, opening: opening, boardCharacter: boardCharacter)
         var selected: [TemplateProfile] = []
         while selected.count < count && !available.isEmpty {
             let picked = pickTemplate(from: available, using: &generator)
@@ -429,11 +462,18 @@ enum PieceFactory {
         }
 
         if opening {
-            score += reliefCount * 26
-            score += pivotCount * 10
+            score += reliefCount * 22
+            score += pivotCount * 14
             score -= pressureCount * 18
-            if reliefCount == 2 && pivotCount == 1 {
-                score += 12
+            if reliefCount == 1 && pivotCount == 2 {
+                score += 22
+            } else if reliefCount == 2 && pivotCount == 1 {
+                score += 6
+            }
+            if sizes.contains(1) && sizes.contains(2) && sizes.contains(3) {
+                score += 20
+            } else if lowFootprintCount >= 1 && sizes.contains(3) {
+                score += 10
             }
         } else if occupiedCellCount < 8 {
             score += reliefCount * 10

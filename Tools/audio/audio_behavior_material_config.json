@@ -1,0 +1,79 @@
+{
+  "model_id": "eleven_text_to_sound_v2",
+  "default_output_format": "pcm_48000",
+  "events": [
+    {
+      "event": "tactileSettle",
+      "canonical_output_filename": "material_tactile_settle.wav",
+      "prompt": "Very short premium puzzle contact material. Felted settle, soft resin touch, cool stone damping, softly weighted, expensive and tactile, dry finish, no scratch, no metal, no pop, no alarm tone.",
+      "duration_seconds": 0.55,
+      "prompt_influence": 0.78,
+      "candidates": 12,
+      "trim_range_ms": { "min": 50, "max": 160 }
+    },
+    {
+      "event": "gentleRefusal",
+      "canonical_output_filename": "material_gentle_refusal.wav",
+      "prompt": "Very short premium gentle refusal material for a calm puzzle game. Neutral-cool pushback, soft contact, understated and intelligent, no buzzer, no fail tone, no shame, no bright alert, clean stop.",
+      "duration_seconds": 0.5,
+      "prompt_influence": 0.8,
+      "candidates": 12,
+      "trim_range_ms": { "min": 50, "max": 150 }
+    },
+    {
+      "event": "resolvedRelease",
+      "canonical_output_filename": "material_resolved_release.wav",
+      "prompt": "Short premium puzzle resolution material. Clean release, board can breathe, gentle emotional lift, controlled and satisfying, same smoked glass and soft resin family, no arcade shing, no casino sparkle, no ring.",
+      "duration_seconds": 0.65,
+      "prompt_influence": 0.8,
+      "candidates": 12,
+      "trim_range_ms": { "min": 80, "max": 220 }
+    },
+    {
+      "event": "rewardLift",
+      "canonical_output_filename": "material_reward_lift.wav",
+      "prompt": "Short premium puzzle reward material. Warm-cool uplift, satisfying but restrained, expensive and lively, success growing, no fanfare, no jackpot, no metallic shine, no bright synth victory.",
+      "duration_seconds": 0.75,
+      "prompt_influence": 0.82,
+      "candidates": 12,
+      "trim_range_ms": { "min": 100, "max": 260 }
+    },
+    {
+      "event": "masteryLift",
+      "canonical_output_filename": "material_mastery_lift.wav",
+      "prompt": "Short premium mastery material for a strategic puzzle game. More valuable and wider than a small reward, expert move feeling, elegant confidence, controlled bloom, no anthem, no loud celebration, no harsh highs.",
+      "duration_seconds": 0.85,
+      "prompt_influence": 0.82,
+      "candidates": 12,
+      "trim_range_ms": { "min": 120, "max": 300 }
+    },
+    {
+      "event": "personalCeremony",
+      "canonical_output_filename": "material_personal_ceremony.wav",
+      "prompt": "Short premium personal achievement material. Quiet pride, memorable success, lightly emotional, clean landing, expensive and intimate, no trophy jingle, no ad-style reward, no synthetic brightness.",
+      "duration_seconds": 0.9,
+      "prompt_influence": 0.84,
+      "candidates": 12,
+      "trim_range_ms": { "min": 140, "max": 340 }
+    },
+    {
+      "event": "ritualCeremony",
+      "canonical_output_filename": "material_ritual_ceremony.wav",
+      "prompt": "Short premium ritual completion material. Calm ceremonial closure, gentle reward, return tomorrow feeling, soft bloom and clean ending, no mission complete fanfare, no pressure, no militarized success.",
+      "duration_seconds": 1.0,
+      "prompt_influence": 0.84,
+      "candidates": 12,
+      "trim_range_ms": { "min": 160, "max": 380 }
+    },
+    {
+      "event": "gentleClosure",
+      "canonical_output_filename": "material_gentle_closure.wav",
+      "prompt": "Short premium run closure material. Gentle landing, reflective but kind, restart inviting, no fail buzzer, no guilt, no dramatic drop, soft clean ending, same premium puzzle world.",
+      "duration_seconds": 0.7,
+      "prompt_influence": 0.82,
+      "candidates": 12,
+      "trim_range_ms": { "min": 100, "max": 240 }
+    }
+  ]
+}
+

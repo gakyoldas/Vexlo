@@ -1,0 +1,252 @@
+{
+  "events": [
+    {
+      "event": "validPlace",
+      "output": "Tools/audio/final_signature/sfx_piece_place.wav",
+      "target_peak": 0.72,
+      "soft_clip_drive": 1.06,
+      "master_lowpass_hz": 2100,
+      "master_highpass_hz": 90,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 18,
+      "trim_range_ms": { "min": 140, "max": 240 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_piece_place.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2200,
+          "highpass_hz": 90,
+          "fade_in_ms": 2,
+          "fade_out_ms": 18
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_utilityClose/utilityClose/candidate_06.wav",
+          "gain_db": -26.0,
+          "lowpass_hz": 1000,
+          "highpass_hz": 180,
+          "offset_ms": 8,
+          "max_duration_ms": 90,
+          "fade_in_ms": 2,
+          "fade_out_ms": 16
+        }
+      ]
+    },
+    {
+      "event": "invalidPlace",
+      "output": "Tools/audio/final_signature/sfx_invalid.wav",
+      "target_peak": 0.56,
+      "soft_clip_drive": 1.02,
+      "master_lowpass_hz": 1700,
+      "master_highpass_hz": 100,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 16,
+      "trim_range_ms": { "min": 110, "max": 180 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_invalid.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 1800,
+          "highpass_hz": 100,
+          "fade_in_ms": 2,
+          "fade_out_ms": 16
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_invalidPlace/invalidPlace/candidate_01.wav",
+          "gain_db": -30.0,
+          "lowpass_hz": 800,
+          "highpass_hz": 220,
+          "offset_ms": 4,
+          "max_duration_ms": 70,
+          "fade_in_ms": 2,
+          "fade_out_ms": 14
+        }
+      ]
+    },
+    {
+      "event": "lineClear",
+      "output": "Tools/audio/final_signature/sfx_line_clear.wav",
+      "target_peak": 0.68,
+      "soft_clip_drive": 1.03,
+      "master_lowpass_hz": 2100,
+      "master_highpass_hz": 90,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 22,
+      "trim_range_ms": { "min": 180, "max": 320 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_line_clear.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2200,
+          "highpass_hz": 90,
+          "fade_in_ms": 2,
+          "fade_out_ms": 20
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_utilityOpen/utilityOpen/candidate_08.wav",
+          "gain_db": -28.0,
+          "lowpass_hz": 950,
+          "highpass_hz": 180,
+          "offset_ms": 18,
+          "max_duration_ms": 100,
+          "fade_in_ms": 2,
+          "fade_out_ms": 18
+        }
+      ]
+    },
+    {
+      "event": "comboX2",
+      "output": "Tools/audio/final_signature/sfx_combo_x2.wav",
+      "target_peak": 0.72,
+      "soft_clip_drive": 1.04,
+      "master_lowpass_hz": 2200,
+      "master_highpass_hz": 90,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 26,
+      "trim_range_ms": { "min": 220, "max": 360 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_combo_x2.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2300,
+          "highpass_hz": 90,
+          "fade_in_ms": 2,
+          "fade_out_ms": 22
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_newBest/newBest/candidate_05.wav",
+          "gain_db": -28.0,
+          "lowpass_hz": 1100,
+          "highpass_hz": 170,
+          "offset_ms": 38,
+          "max_duration_ms": 110,
+          "fade_in_ms": 3,
+          "fade_out_ms": 18
+        }
+      ]
+    },
+    {
+      "event": "comboX3Plus",
+      "output": "Tools/audio/final_signature/sfx_combo_x3_plus.wav",
+      "target_peak": 0.74,
+      "soft_clip_drive": 1.05,
+      "master_lowpass_hz": 2300,
+      "master_highpass_hz": 90,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 28,
+      "trim_range_ms": { "min": 260, "max": 420 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_combo_x3_plus.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2400,
+          "highpass_hz": 90,
+          "fade_in_ms": 2,
+          "fade_out_ms": 24
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_dailyComplete/dailyComplete/candidate_08.wav",
+          "gain_db": -26.0,
+          "lowpass_hz": 1100,
+          "highpass_hz": 170,
+          "offset_ms": 56,
+          "max_duration_ms": 140,
+          "fade_in_ms": 3,
+          "fade_out_ms": 20
+        }
+      ]
+    },
+    {
+      "event": "newBest",
+      "output": "Tools/audio/final_signature/sfx_new_best.wav",
+      "target_peak": 0.74,
+      "soft_clip_drive": 1.04,
+      "master_lowpass_hz": 2200,
+      "master_highpass_hz": 80,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 30,
+      "trim_range_ms": { "min": 280, "max": 520 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_new_best.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2200,
+          "highpass_hz": 80,
+          "fade_in_ms": 2,
+          "fade_out_ms": 26
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_newBest/newBest/candidate_05.wav",
+          "gain_db": -24.0,
+          "lowpass_hz": 1200,
+          "highpass_hz": 150,
+          "offset_ms": 64,
+          "max_duration_ms": 180,
+          "fade_in_ms": 4,
+          "fade_out_ms": 24
+        }
+      ]
+    },
+    {
+      "event": "dailyComplete",
+      "output": "Tools/audio/final_signature/sfx_daily_complete.wav",
+      "target_peak": 0.74,
+      "soft_clip_drive": 1.04,
+      "master_lowpass_hz": 2200,
+      "master_highpass_hz": 80,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 34,
+      "trim_range_ms": { "min": 340, "max": 620 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_daily_complete.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 2200,
+          "highpass_hz": 80,
+          "fade_in_ms": 2,
+          "fade_out_ms": 28
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_dailyComplete/dailyComplete/candidate_08.wav",
+          "gain_db": -24.0,
+          "lowpass_hz": 1200,
+          "highpass_hz": 150,
+          "offset_ms": 84,
+          "max_duration_ms": 200,
+          "fade_in_ms": 4,
+          "fade_out_ms": 28
+        }
+      ]
+    },
+    {
+      "event": "gameOver",
+      "output": "Tools/audio/final_signature/sfx_game_over.wav",
+      "target_peak": 0.52,
+      "soft_clip_drive": 1.01,
+      "master_lowpass_hz": 1700,
+      "master_highpass_hz": 80,
+      "master_fade_in_ms": 2,
+      "master_fade_out_ms": 22,
+      "trim_range_ms": { "min": 180, "max": 280 },
+      "layers": [
+        {
+          "source": "Tools/audio/final_synth/sfx_game_over.wav",
+          "gain_db": 0.0,
+          "lowpass_hz": 1800,
+          "highpass_hz": 80,
+          "fade_in_ms": 2,
+          "fade_out_ms": 20
+        },
+        {
+          "source": "Tools/audio/batches/final_family_v4_20260505T003500Z_gameOver/gameOver/candidate_07.wav",
+          "gain_db": -30.0,
+          "lowpass_hz": 900,
+          "highpass_hz": 150,
+          "offset_ms": 34,
+          "max_duration_ms": 100,
+          "fade_in_ms": 3,
+          "fade_out_ms": 18
+        }
+      ]
+    }
+  ]
+}

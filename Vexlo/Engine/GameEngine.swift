@@ -51,6 +51,7 @@ final class GameEngine: ObservableObject {
         let hasUsedReroll: Bool
         let generationMemory: PieceFactory.GenerationMemory.Snapshot
         let dailyGeneratorState: UInt64?
+        let dailyBoardCharacterRawValue: Int?
     }
 
     @Published private(set) var board: HexBoard
@@ -67,6 +68,7 @@ final class GameEngine: ObservableObject {
     private let slotCount: Int = 3
     private var normalGenerator: PieceFactory.SeededGenerator?
     private var dailyGenerator: PieceFactory.SeededGenerator?
+    private var dailyBoardCharacter: PieceFactory.BoardCharacter = .balanced
     private var generationMemory = PieceFactory.GenerationMemory()
 
     init() {
@@ -145,8 +147,9 @@ final class GameEngine: ObservableObject {
         restart(normalSeed: seed)
     }
 
-    func startDailyRun(dayID: String, seed: UInt64) {
+    func startDailyRun(dayID: String, seed: UInt64, boardCharacter: PieceFactory.BoardCharacter = .balanced) {
         runMode = .daily(dayID: dayID, seed: seed)
+        dailyBoardCharacter = boardCharacter
         restart()
     }
 
@@ -199,7 +202,7 @@ final class GameEngine: ObservableObject {
         case let .daily(_, seed):
             normalGenerator = nil
             var generator = PieceFactory.SeededGenerator(seed: seed)
-            let batch = PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator)
+            let batch = PieceFactory.openingBatch(count: slotCount, memory: &generationMemory, using: &generator, boardCharacter: dailyBoardCharacter)
             dailyGenerator = generator
             return batch
         }
@@ -231,7 +234,8 @@ final class GameEngine: ObservableObject {
                 count: slotCount,
                 occupiedCellCount: occupiedCellCount(),
                 memory: &generationMemory,
-                using: &generator
+                using: &generator,
+                boardCharacter: dailyBoardCharacter
             )
             dailyGenerator = generator
             return batch
@@ -318,6 +322,49 @@ final class GameEngine: ObservableObject {
         checkGameOver()
     }
 
+    func loadCaptureComboReviewState() {
+        runMode = .normal
+        normalGenerator = nil
+        dailyGenerator = nil
+        generationMemory = PieceFactory.GenerationMemory()
+        board = HexBoard(cols: cols, rows: rows)
+        scoreEngine.loadCaptureSnapshot(score: 0, best: 280, combo: 0)
+        didClearAny = false
+        maxCombo = 0
+        hasUsedContinue = false
+        hasUsedReroll = false
+        isGameOver = false
+
+        let fillPalette = [
+            UIColor(hex: "7A74F7"),
+            UIColor(hex: "6A8CFA"),
+            UIColor(hex: "55A7F6"),
+            UIColor(hex: "52C0E0"),
+            UIColor(hex: "63C7B0")
+        ]
+        let setupCells = [
+            HexCoordinate(0, 1), HexCoordinate(1, 1), HexCoordinate(2, 1),
+            HexCoordinate(3, 1), HexCoordinate(4, 1), HexCoordinate(5, 1),
+            HexCoordinate(0, 3), HexCoordinate(1, 3), HexCoordinate(2, 3),
+            HexCoordinate(3, 3), HexCoordinate(4, 3), HexCoordinate(5, 3),
+            HexCoordinate(1, 5), HexCoordinate(3, 5), HexCoordinate(5, 5),
+            HexCoordinate(2, 0), HexCoordinate(4, 2), HexCoordinate(6, 4)
+        ]
+        for (index, coord) in setupCells.enumerated() {
+            board.place(color: fillPalette[index % fillPalette.count], at: coord)
+        }
+
+        let firstClearPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "F4B860"))
+        let secondClearPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "8EDFCB"))
+        pieces = [
+            firstClearPiece,
+            secondClearPiece,
+            HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0), HexCoordinate(0, 1)], color: UIColor(hex: "7A74F7"))
+        ].map(Optional.init)
+        place(firstClearPiece, at: HexCoordinate(6, 1), slotIndex: 0)
+        place(secondClearPiece, at: HexCoordinate(6, 3), slotIndex: 1)
+    }
+
     func makeLiveRunSnapshot(runStartBest: Int) -> LiveRunSnapshot? {
         guard !isGameOver else { return nil }
         return LiveRunSnapshot(
@@ -340,7 +387,8 @@ final class GameEngine: ObservableObject {
             hasUsedContinue: hasUsedContinue,
             hasUsedReroll: hasUsedReroll,
             generationMemory: generationMemory.snapshot,
-            dailyGeneratorState: dailyGenerator?.stateSnapshot
+            dailyGeneratorState: dailyGenerator?.stateSnapshot,
+            dailyBoardCharacterRawValue: isDailyChallenge ? dailyBoardCharacter.rawValue : nil
         )
     }
 
@@ -363,8 +411,10 @@ final class GameEngine: ObservableObject {
         case .normal:
             normalGenerator = nil
             dailyGenerator = nil
+            dailyBoardCharacter = .balanced
         case let .daily(_, seed):
             normalGenerator = nil
+            dailyBoardCharacter = snapshot.dailyBoardCharacterRawValue.flatMap { PieceFactory.BoardCharacter(rawValue: $0) } ?? .balanced
             if let state = snapshot.dailyGeneratorState {
                 dailyGenerator = PieceFactory.SeededGenerator(stateSnapshot: state)
             } else {

@@ -15,10 +15,7 @@ struct ResultSharePayload {
 
 enum ResultShareService {
     static func activityItems(for payload: ResultSharePayload) -> [Any] {
-        if let image = makeCardImage(for: payload) {
-            return [ResultShareItemSource(image: image, title: summaryText(for: payload))]
-        }
-        return [summaryText(for: payload)]
+        [ResultShareItemSource(payload: payload, title: summaryText(for: payload))]
     }
 
     private static func summaryText(for payload: ResultSharePayload) -> String {
@@ -29,7 +26,7 @@ enum ResultShareService {
         return "VEXLO - \(mode) - \(payload.score)"
     }
 
-    private static func makeCardImage(for payload: ResultSharePayload) -> UIImage? {
+    fileprivate static func makeCardImage(for payload: ResultSharePayload) -> UIImage? {
         let size = CGSize(width: 1200, height: 1600)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -75,28 +72,28 @@ enum ResultShareService {
     }
 
     private static func drawText(_ payload: ResultSharePayload, in rect: CGRect) {
-        let mode = payload.mode == .daily ? "TODAY'S CHALLENGE" : "MAIN RUN"
         drawCentered(
             "VEXLO",
-            y: 270,
+            y: 264,
             width: rect.width,
-            font: .systemFont(ofSize: 54, weight: .semibold),
-            color: UIColor(hex: "F4F3FF").withAlphaComponent(0.92),
+            font: .systemFont(ofSize: 56, weight: .bold),
+            color: UIColor(hex: "F4F3FF").withAlphaComponent(0.94),
             kern: 9
         )
+        let modeTitle = shareModeTitle(for: payload)
         drawCentered(
-            mode,
-            y: 356,
+            modeTitle,
+            y: 348,
             width: rect.width,
-            font: .systemFont(ofSize: 31, weight: .semibold),
-            color: UIColor(hex: payload.mode == .daily ? "DDE6FF" : "B5A8FF").withAlphaComponent(0.74),
-            kern: 4
+            font: .systemFont(ofSize: payload.mode == .daily ? 33 : 29, weight: .bold),
+            color: UIColor(hex: payload.mode == .daily ? "DDE6FF" : "CFC8FF").withAlphaComponent(payload.mode == .daily ? 0.82 : 0.74),
+            kern: payload.mode == .daily ? 4 : 3
         )
         drawCentered(
             "\(payload.score)",
-            y: 635,
+            y: 620,
             width: rect.width,
-            font: .monospacedDigitSystemFont(ofSize: 210, weight: .bold),
+            font: .monospacedDigitSystemFont(ofSize: 224, weight: .bold),
             color: UIColor(hex: "FBF9FF")
         )
 
@@ -111,16 +108,35 @@ enum ResultShareService {
             footerLines.append(payload.mode == .daily ? "Daily Complete" : "Run Complete")
         }
 
+        let footerBaseY: CGFloat = payload.mode == .daily ? 928 : 956
+        let footerPrimaryAlpha: CGFloat = payload.mode == .daily ? 0.86 : 0.8
+        let footerLineSpacing: CGFloat = 58
         for (index, line) in footerLines.prefix(2).enumerated() {
             drawCentered(
                 line,
-                y: 970 + CGFloat(index) * 62,
+                y: footerBaseY + CGFloat(index) * footerLineSpacing,
                 width: rect.width,
-                font: .systemFont(ofSize: index == 0 ? 35 : 30, weight: index == 0 ? .semibold : .regular),
-                color: UIColor.white.withAlphaComponent(index == 0 ? 0.76 : 0.54),
+                font: .systemFont(ofSize: index == 0 ? 36 : 30, weight: index == 0 ? .semibold : .regular),
+                color: UIColor.white.withAlphaComponent(index == 0 ? footerPrimaryAlpha : 0.58),
                 kern: index == 0 ? 3 : 0
             )
         }
+
+        drawCentered(
+            "Northfall Studio",
+            y: 1388,
+            width: rect.width,
+            font: .systemFont(ofSize: 22, weight: .semibold),
+            color: UIColor.white.withAlphaComponent(0.24),
+            kern: 2
+        )
+    }
+
+    private static func shareModeTitle(for payload: ResultSharePayload) -> String {
+        guard payload.mode == .normal else { return "TODAY'S CHALLENGE" }
+        let completedRuns = GameCenterService.shared.completedRunCount
+        guard completedRuns > 0 else { return "MAIN RUN" }
+        return "MAIN RUN • RUN \(completedRuns)"
     }
 
     private static func drawCentered(
@@ -143,23 +159,37 @@ enum ResultShareService {
 }
 
 private final class ResultShareItemSource: NSObject, UIActivityItemSource {
-    private let image: UIImage
+    private let payload: ResultSharePayload
     private let title: String
+    private lazy var placeholderImage: UIImage = {
+        let size = CGSize(width: 1200, height: 1600)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { context in
+            context.cgContext.setFillColor(UIColor(hex: "080810").cgColor)
+            context.cgContext.fill(CGRect(origin: .zero, size: size))
+        }
+    }()
+    private lazy var renderedImage: UIImage = {
+        ResultShareService.makeCardImage(for: payload) ?? placeholderImage
+    }()
 
-    init(image: UIImage, title: String) {
-        self.image = image
+    init(payload: ResultSharePayload, title: String) {
+        self.payload = payload
         self.title = title
     }
 
     func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
-        image
+        placeholderImage
     }
 
     func activityViewController(
         _ activityViewController: UIActivityViewController,
         itemForActivityType activityType: UIActivity.ActivityType?
     ) -> Any? {
-        image
+        renderedImage
     }
 
     func activityViewController(
@@ -172,7 +202,7 @@ private final class ResultShareItemSource: NSObject, UIActivityItemSource {
     func activityViewControllerLinkMetadata(_ activityViewController: UIActivityViewController) -> LPLinkMetadata? {
         let metadata = LPLinkMetadata()
         metadata.title = title
-        metadata.imageProvider = NSItemProvider(object: image)
+        metadata.imageProvider = NSItemProvider(object: renderedImage)
         return metadata
     }
 }

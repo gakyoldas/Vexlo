@@ -1,4 +1,5 @@
 import Foundation
+import LinkPresentation
 import Testing
 import UIKit
 @testable import Vexlo
@@ -66,6 +67,107 @@ struct CriticalPathRegressionTests {
 
         #expect(left.board.snapshot.cells.map(\.coordinate) == right.board.snapshot.cells.map(\.coordinate))
         #expect(pieceSignatures(left.pieces) == pieceSignatures(right.pieces))
+    }
+
+    @Test
+    func normalModeOpeningGenerationTightensEarlierThanExplicitBalancedBoardCharacterPath() {
+        var normalGenerator = PieceFactory.SeededGenerator(seed: 2)
+        var normalMemory = PieceFactory.GenerationMemory()
+        let normalOpening = PieceFactory.openingBatch(count: 3, memory: &normalMemory, using: &normalGenerator)
+        let normalRefill = PieceFactory.randomBatch(count: 3, occupiedCellCount: 5, memory: &normalMemory, using: &normalGenerator)
+
+        var standardGenerator = PieceFactory.SeededGenerator(seed: 2)
+        var standardMemory = PieceFactory.GenerationMemory()
+        let standardOpening = PieceFactory.openingBatch(
+            count: 3,
+            memory: &standardMemory,
+            using: &standardGenerator,
+            boardCharacter: .balanced
+        )
+        let standardRefill = PieceFactory.randomBatch(
+            count: 3,
+            occupiedCellCount: 5,
+            memory: &standardMemory,
+            using: &standardGenerator,
+            boardCharacter: .balanced
+        )
+
+        #expect(batchOffsetSignatures(normalOpening) == ["0:0|1:0", "0:0|1:0|1:1", "0:0|0:1|0:2"])
+        #expect(batchOffsetSignatures(standardOpening) == ["0:0|0:1|1:0", "0:0|1:0", "0:0"])
+        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|1:0", "0:0|0:1", "0:0|1:0|1:1"])
+        #expect(batchOffsetSignatures(standardRefill) == ["0:0|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
+    }
+
+    @Test
+    func dailyToneVariantMapsToAcceptedBoardCharacter() {
+        #expect(DailyToneVariant.glacial.boardCharacter == .open)
+        #expect(DailyToneVariant.lucid.boardCharacter == .balanced)
+        #expect(DailyToneVariant.iris.boardCharacter == .focused)
+    }
+
+    @Test
+    func dailySceneStartUsesMappedBoardCharacter() throws {
+        clearSharedResumeState()
+        defer { clearSharedResumeState() }
+
+        let dayID = "2025-01-15"
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let expectedCharacter = DailyChallengeService.shared.toneVariant(for: dayID).boardCharacter
+
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+
+        let snapshot = try #require(scene.testingMakeLiveRunSnapshot(runStartBest: 0))
+        #expect(snapshot.runMode.runMode == .daily(dayID: dayID, seed: seed))
+        #expect(snapshot.dailyBoardCharacterRawValue == expectedCharacter.rawValue)
+    }
+
+    @Test
+    func dailyLiveRunSnapshotRestorePreservesBoardCharacter() throws {
+        let dayID = "2025-01-17"
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let boardCharacter = DailyToneVariant.iris.boardCharacter
+        let engine = GameEngine()
+        engine.startDailyRun(dayID: dayID, seed: seed, boardCharacter: boardCharacter)
+
+        let openingPiece = try #require(engine.pieces[0])
+        let anchor = try #require(firstLegalAnchor(for: openingPiece, in: engine))
+        engine.place(openingPiece, at: anchor, slotIndex: 0)
+
+        let snapshot = try #require(engine.makeLiveRunSnapshot(runStartBest: 0))
+        let restored = GameEngine()
+        restored.restoreLiveRun(from: snapshot)
+        let restoredSnapshot = try #require(restored.makeLiveRunSnapshot(runStartBest: 0))
+
+        #expect(snapshot.dailyBoardCharacterRawValue == boardCharacter.rawValue)
+        #expect(restoredSnapshot.dailyBoardCharacterRawValue == boardCharacter.rawValue)
+        #expect(try encodedSnapshot(snapshot) == encodedSnapshot(restoredSnapshot))
+    }
+
+    @Test
+    func dailyChallengeSurfaceUsesQuietWeekdayCharacter() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        let service = DailyChallengeService(defaults: defaults, calendar: calendar)
+
+        #expect(service.weekdayTitle(for: "2025-01-15") == "Wednesday")
+        let jan15Tone = service.toneVariant(for: "2025-01-15")
+        #expect(service.toneVariant(for: "2025-01-15") == jan15Tone)
+        let toneSet = Set([
+            service.toneVariant(for: "2025-01-15").rawValue,
+            service.toneVariant(for: "2025-01-16").rawValue,
+            service.toneVariant(for: "2025-01-17").rawValue
+        ])
+        #expect(!toneSet.isEmpty)
+        #expect(toneSet.allSatisfy { DailyToneVariant(rawValue: $0) != nil })
+        #expect(VexloStrings.HUD.boardReading == "Board reading")
+        #expect(VexloStrings.HUD.todaysBoard(weekday: "Wednesday") == "Today's Board • Wednesday")
+        #expect(VexloStrings.HUD.dailyBoard(weekday: "Wednesday") == "Wednesday Board")
+        #expect(GameScene.normalOpeningModeLabelText() == "Board reading")
     }
 
     @Test
@@ -150,6 +252,297 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func firstSessionPlacementHintSurfaceOnlyShowsForFreshNormalOpeningState() {
+        let state = GameScene.OnboardingSurfaceState(
+            isCaptureMode: false,
+            isDailyChallenge: false,
+            isOverlayHidden: true,
+            isUtilityPresented: false,
+            isInteractionLocked: false,
+            isShowingTransientHint: false,
+            isDraggingPiece: false,
+            shouldShowPlacementHint: true,
+            score: 0,
+            didClearAny: false,
+            isBoardEmpty: true
+        )
+
+        #expect(state.canShowFirstSessionHintSurface)
+        #expect(state.shouldShowPlacementHintSurface)
+    }
+
+    @Test
+    func firstSessionPlacementHintSurfaceStaysSuppressedOutsidePrimaryOpeningContext() {
+        let hiddenByContext = [
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: true,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: true,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: false,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: true,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: true,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            )
+        ]
+
+        for state in hiddenByContext {
+            #expect(!state.canShowFirstSessionHintSurface)
+            #expect(!state.shouldShowPlacementHintSurface)
+        }
+    }
+
+    @Test
+    func firstSessionPlacementHintSurfaceStaysSuppressedOnceOpeningStateHasProgressed() {
+        let hiddenByRunState = [
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: true,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: true,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: false,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 12,
+                didClearAny: false,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: true,
+                isBoardEmpty: true
+            ),
+            GameScene.OnboardingSurfaceState(
+                isCaptureMode: false,
+                isDailyChallenge: false,
+                isOverlayHidden: true,
+                isUtilityPresented: false,
+                isInteractionLocked: false,
+                isShowingTransientHint: false,
+                isDraggingPiece: false,
+                shouldShowPlacementHint: true,
+                score: 0,
+                didClearAny: false,
+                isBoardEmpty: false
+            )
+        ]
+
+        for state in hiddenByRunState {
+            #expect(state.canShowFirstSessionHintSurface)
+            #expect(!state.shouldShowPlacementHintSurface)
+        }
+    }
+
+    @Test
+    func firstMinuteMasteryCueCopyStaysStrategicAndCalm() {
+        #expect(VexloStrings.Onboarding.completeLine == "Chain the next clear to lift score")
+        #expect(VexloStrings.Onboarding.chainBuildsScore == "Consecutive clears build a chain")
+        #expect(GameScene.comboCueText(for: 2) == "Combo ×2")
+        #expect(GameScene.chainCueText(for: 2) == "Chain ×2")
+    }
+
+    @Test
+    func comboAndChainEventSemanticsStayDistinctAndComboWinsPrecedence() {
+        #expect(GameScene.masteryEventCueText(clearedLineCount: 2, chainCount: 1) == "Combo ×2")
+        #expect(GameScene.masteryEventCueText(clearedLineCount: 1, chainCount: 2) == "Chain ×2")
+        #expect(GameScene.masteryEventCueText(clearedLineCount: 2, chainCount: 3) == "Combo ×2")
+        #expect(GameScene.masteryEventCueText(clearedLineCount: 1, chainCount: 1) == nil)
+    }
+
+    @Test
+    func firstChainMasteryHintOnlyArmsForRealUnseenChainsWithoutComboCompetition() {
+        #expect(!GameScene.shouldShowFirstChainMasteryHint(clearedLineCount: 1, chainCount: 1, chainAdvanced: false, hasShownHint: false))
+        #expect(GameScene.shouldShowFirstChainMasteryHint(clearedLineCount: 1, chainCount: 2, chainAdvanced: true, hasShownHint: false))
+        #expect(!GameScene.shouldShowFirstChainMasteryHint(clearedLineCount: 2, chainCount: 2, chainAdvanced: true, hasShownHint: false))
+        #expect(!GameScene.shouldShowFirstChainMasteryHint(clearedLineCount: 1, chainCount: 3, chainAdvanced: true, hasShownHint: true))
+    }
+
+    @Test
+    func firstClearMasteryHintYieldsToComboAndChainPrecedence() {
+        #expect(GameScene.shouldShowFirstClearMasteryHint(clearedCellCount: 1, clearedLineCount: 1, chainAdvanced: false, shouldShowClearHint: true))
+        #expect(!GameScene.shouldShowFirstClearMasteryHint(clearedCellCount: 1, clearedLineCount: 2, chainAdvanced: false, shouldShowClearHint: true))
+        #expect(!GameScene.shouldShowFirstClearMasteryHint(clearedCellCount: 1, clearedLineCount: 1, chainAdvanced: true, shouldShowClearHint: true))
+        #expect(!GameScene.shouldShowFirstClearMasteryHint(clearedCellCount: 0, clearedLineCount: 1, chainAdvanced: false, shouldShowClearHint: true))
+        #expect(!GameScene.shouldShowFirstClearMasteryHint(clearedCellCount: 1, clearedLineCount: 1, chainAdvanced: false, shouldShowClearHint: false))
+    }
+
+    @Test
+    func dragPreviewProfilesDistinguishValidClearAndMultiClearPlacements() {
+        #expect(GameScene.dragPreviewProfile(isValid: false, clearedLineCount: 0) == .invalidPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 0) == .validPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 1) == .clearPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 2) == .multiClearPlacement)
+    }
+
+    @Test
+    func openingReliefPreviewEmphasisOnlyArmsForOpeningValidPlacementsWithMeaningfulBoardContact() {
+        let placement = [HexCoordinate(2, 2), HexCoordinate(3, 2)]
+        let occupied = Set([HexCoordinate(2, 1), HexCoordinate(3, 1)])
+
+        #expect(GameScene.openingReliefContactScore(placementCoordinates: placement, occupiedCoordinates: occupied) == 2)
+        #expect(GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .validPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: false,
+            previewProfile: .validPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .clearPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .validPlacement,
+            placementCoordinates: [HexCoordinate(0, 0)],
+            occupiedCoordinates: Set([HexCoordinate(0, 1)])
+        ))
+    }
+
+    @Test
+    func editorialRunCharacterUsesExistingTerminalSignalsOnly() {
+        #expect(GameScene.editorialRunCharacter(maxCombo: 1, didClearAny: false, hasUsedContinue: false) == "Tight board")
+        #expect(GameScene.editorialRunCharacter(maxCombo: 1, didClearAny: true, hasUsedContinue: false) == "Steady clears")
+        #expect(GameScene.editorialRunCharacter(maxCombo: 2, didClearAny: true, hasUsedContinue: false) == "Chain-led")
+        #expect(GameScene.editorialRunCharacter(maxCombo: 3, didClearAny: true, hasUsedContinue: true) == "Late recovery")
+    }
+
+    @Test
+    func quietNearMissMasteryLineOnlyAppearsForCredibleSmallGapRuns() {
+        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == "One cleaner run was there")
+        #expect(GameScene.quietNearMissMasteryLine(score: 209, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == nil)
+        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 1, didClearAny: true, hasUsedContinue: false) == nil)
+        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: false, hasUsedContinue: false) == nil)
+        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: true) == nil)
+        #expect(GameScene.quietNearMissMasteryLine(score: 240, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == nil)
+    }
+
+    @Test
+    func resultOverlayCaptureSuppressesGamesButPreservesMeaningfulProgress() {
+        #expect(!GameScene.shouldShowResultGames(isResultOverlayCapture: true, showsGames: true, canShare: false, showsContinue: false))
+        #expect(!GameScene.shouldShowResultGames(isResultOverlayCapture: false, showsGames: true, canShare: true, showsContinue: false))
+        #expect(!GameScene.shouldShowResultGames(isResultOverlayCapture: false, showsGames: true, canShare: false, showsContinue: true))
+        #expect(GameScene.shouldShowResultGames(isResultOverlayCapture: false, showsGames: true, canShare: false, showsContinue: false))
+        #expect(GameScene.shouldShowResultProgress(showsProgress: true, progressText: "Streak 4"))
+        #expect(GameScene.shouldShowResultProgress(showsProgress: true, progressText: "Run 12"))
+        #expect(!GameScene.shouldShowResultProgress(showsProgress: true, progressText: ""))
+        #expect(!GameScene.shouldShowResultProgress(showsProgress: false, progressText: "Streak 4"))
+        #expect(!GameScene.shouldShowResultShare(canShare: true, showsContinue: true))
+        #expect(GameScene.shouldShowResultShare(canShare: true, showsContinue: false))
+        #expect(!GameScene.shouldShowResultShare(canShare: false, showsContinue: false))
+    }
+
+    @Test
     func dailyChallengeCompletionOnlyCountsOncePerDayAndSeedStaysStable() {
         let (defaults, suiteName) = makeDefaults()
         defer { clear(suiteName) }
@@ -168,6 +561,514 @@ struct CriticalPathRegressionTests {
         #expect(second.streakCount == 1)
         #expect(second.todayBest == 120)
     }
+
+    @Test
+    func hiddenCaptureLaunchConfigurationKeepsEditorialStatesRecognized() {
+        let publicStates: [(String, CaptureState)] = [
+            ("normal-run", .normalRun),
+            ("normal-hero", .normalHero),
+            ("daily-challenge", .dailyChallenge),
+            ("daily-hero", .dailyHero),
+            ("normal-result", .normalResult),
+            ("daily-result", .dailyResult)
+        ]
+
+        for (rawValue, expectedState) in publicStates {
+            let configuration = CaptureLaunchConfiguration(arguments: ["Vexlo", "-VexloCaptureState", rawValue])
+
+            #expect(configuration.state == expectedState)
+            #expect(configuration.isCaptureMode)
+            #expect(configuration.intent == .editorial)
+            #expect(!configuration.isInternalCapture)
+            #expect(configuration.resultScoreOverride == nil)
+        }
+    }
+
+    @Test
+    func resultShareServiceKeepsImageLedCardsReachableForNormalAndDailyPayloads() throws {
+        let controller = UIActivityViewController(activityItems: ["placeholder"], applicationActivities: nil)
+        let cases: [(ResultSharePayload, String)] = [
+            (
+                ResultSharePayload(mode: .normal, score: 210, badge: "New Best", detail: "12 to best"),
+                "VEXLO - Main Run - 210 - New Best"
+            ),
+            (
+                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Streak 1"),
+                "VEXLO - Today's Challenge - 70 - Best Today"
+            )
+        ]
+
+        for (payload, expectedTitle) in cases {
+            let items = ResultShareService.activityItems(for: payload)
+            #expect(items.count == 1)
+
+            let source = try #require(items.first as? UIActivityItemSource)
+            let placeholder = try #require(source.activityViewControllerPlaceholderItem(controller) as? UIImage)
+            #expect(placeholder.size == CGSize(width: 1200, height: 1600))
+
+            let item = try #require(source.activityViewController(controller, itemForActivityType: nil) as? UIImage)
+            #expect(item.size == CGSize(width: 1200, height: 1600))
+
+            let subject = source.activityViewController?(controller, subjectForActivityType: nil)
+            #expect(subject == expectedTitle)
+
+            let metadata = try #require(source.activityViewControllerLinkMetadata?(controller))
+            #expect(metadata.title == expectedTitle)
+            #expect(metadata.imageProvider != nil)
+        }
+    }
+
+    @Test
+    func hiddenCaptureResultStatesStayDistinctAndOwnScoreOverride() {
+        let normal = CaptureLaunchConfiguration(arguments: [
+            "Vexlo",
+            "-VexloCaptureState=normal-result",
+            "-VexloCaptureScore",
+            "12"
+        ])
+        let daily = CaptureLaunchConfiguration(arguments: [
+            "Vexlo",
+            "-VexloCaptureState",
+            "daily-result",
+            "-VexloCaptureScore=34"
+        ])
+        let opening = CaptureLaunchConfiguration(arguments: [
+            "Vexlo",
+            "-VexloCaptureState",
+            "normal-run",
+            "-VexloCaptureScore",
+            "7"
+        ])
+
+        #expect(normal.state == .normalResult)
+        #expect(daily.state == .dailyResult)
+        #expect(normal.isResultOverlayCapture)
+        #expect(daily.isResultOverlayCapture)
+        #expect(normal.resultScoreOverride == 12)
+        #expect(daily.resultScoreOverride == 34)
+        #expect(!opening.isResultOverlayCapture)
+        #expect(opening.resultScoreOverride == nil)
+    }
+
+    @Test
+    func hiddenCaptureHeroStatesAndInternalIntentStayExplicit() {
+        let normalHero = CaptureLaunchConfiguration(arguments: ["Vexlo", "-VexloCaptureState", "normal-hero"])
+        let dailyHero = CaptureLaunchConfiguration(arguments: ["Vexlo", "-VexloCaptureState", "daily-hero"])
+        let internalCapture = CaptureLaunchConfiguration(arguments: [
+            "Vexlo",
+            "-VexloCaptureState",
+            "utility-surface",
+            "-VexloCaptureIntent",
+            "internal"
+        ])
+        let invalidIntent = CaptureLaunchConfiguration(arguments: [
+            "Vexlo",
+            "-VexloCaptureState",
+            "utility-surface",
+            "-VexloCaptureIntent",
+            "private"
+        ])
+
+        #expect(normalHero.state == .normalHero)
+        #expect(dailyHero.state == .dailyHero)
+        #expect(internalCapture.intent == .internal)
+        #expect(internalCapture.isInternalCapture)
+        #expect(invalidIntent.intent == .editorial)
+        #expect(!invalidIntent.isInternalCapture)
+    }
+}
+
+@Suite(.serialized)
+struct SceneResumeFirstRegressionTests {
+    @Test
+    func freshLaunchRestorePassRestoresPersistedRunAtSceneLevel() throws {
+        clearSharedResumeState()
+        defer { clearSharedResumeState() }
+
+        let snapshot = try makeResumableNormalSnapshot(seed: 0x1234, placements: 2)
+        LiveRunPersistenceService.shared.save(snapshot)
+
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        let state = scene.testingResumeFirstState
+        #expect(state.runMode == .normal)
+        #expect(state.score == snapshot.score)
+        #expect(state.occupiedCellCount == snapshot.board.cells.count)
+        #expect(state.hasAttemptedPersistedRestore)
+        #expect(!state.isGameOver)
+    }
+
+    @Test
+    func activeInMemoryResumeRouteDoesNotReRestorePersistedRun() throws {
+        clearSharedResumeState()
+        defer { clearSharedResumeState() }
+
+        let initialSnapshot = try makeResumableNormalSnapshot(seed: 0xCAFE, placements: 1)
+        LiveRunPersistenceService.shared.save(initialSnapshot)
+
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        let restoredState = scene.testingResumeFirstState
+        #expect(restoredState.occupiedCellCount == initialSnapshot.board.cells.count)
+
+        let laterSnapshot = try makeResumableNormalSnapshot(seed: 0xBEEF, placements: 3)
+        LiveRunPersistenceService.shared.save(laterSnapshot)
+        SystemEntryService.shared.markRunActive(mode: .normal)
+
+        scene.testingApplySystemEntryRoute(.resumeLastRun)
+
+        let state = scene.testingResumeFirstState
+        #expect(state.runMode == restoredState.runMode)
+        #expect(state.score == restoredState.score)
+        #expect(state.occupiedCellCount == restoredState.occupiedCellCount)
+        #expect(state.occupiedCellCount != laterSnapshot.board.cells.count)
+    }
+
+    @Test
+    func nonResumableResumeRouteDoesNotFalselyRestore() {
+        clearSharedResumeState()
+        defer { clearSharedResumeState() }
+
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        let baseline = scene.testingResumeFirstState
+
+        scene.testingApplySystemEntryRoute(.resumeLastRun)
+
+        let state = scene.testingResumeFirstState
+        #expect(state.runMode == baseline.runMode)
+        #expect(state.score == baseline.score)
+        #expect(state.occupiedCellCount == baseline.occupiedCellCount)
+        #expect(state.hasAttemptedPersistedRestore == baseline.hasAttemptedPersistedRestore)
+    }
+}
+
+@Suite(.serialized)
+struct TerminalResultFinalizationRegressionTests {
+    @Test
+    func dailyCompletionFinalizesExactlyOnceAtTrueTerminalCompletion() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let dayID = uniqueDayID()
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let analyticsBefore = analyticsSnapshot()
+        let dailyBefore = DailyChallengeService.shared.status(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+        scene.testingLoadTerminalState(
+            mode: .daily(dayID: dayID, seed: seed),
+            emptyCoordinates: Set([HexCoordinate(1, 0), HexCoordinate(4, 2), HexCoordinate(6, 5)]),
+            tray: terminalTrayPieces(),
+            score: 70,
+            best: 40,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 40
+        )
+
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let state = scene.testingTerminalFinalizationState
+        let dailyAfter = DailyChallengeService.shared.status(for: dayID)
+        let analyticsAfter = analyticsSnapshot()
+
+        #expect(state.runMode == .daily(dayID: dayID, seed: seed))
+        #expect(state.isGameOver)
+        #expect(state.isOverlayPresented)
+        #expect(state.hasFinalizedRun)
+        #expect(!state.canShowContinueAfterLoss)
+        #expect(!dailyBefore.hasCompletedToday)
+        #expect(dailyAfter.hasCompletedToday)
+        #expect(dailyAfter.todayBest == 70)
+        #expect(analyticsAfter.dailyChallengeCompletedCount == analyticsBefore.dailyChallengeCompletedCount + 1)
+        #expect(analyticsAfter.runsEnded == analyticsBefore.runsEnded + 1)
+        #expect(analyticsAfter.dailyRunsEnded == analyticsBefore.dailyRunsEnded + 1)
+    }
+
+    @Test
+    func completedNormalRunCountingFinalizesExactlyOnce() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let completedRunsBefore = GameCenterService.shared.completedRunCount
+        let analyticsBefore = analyticsSnapshot()
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        MonetizationService.shared.testingSetCanPresentOverride(false, for: .continueAfterLoss)
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let state = scene.testingTerminalFinalizationState
+        let analyticsAfter = analyticsSnapshot()
+
+        #expect(state.runMode == .normal)
+        #expect(state.isGameOver)
+        #expect(state.isOverlayPresented)
+        #expect(state.hasFinalizedRun)
+        #expect(!state.canShowContinueAfterLoss)
+        #expect(GameCenterService.shared.completedRunCount == completedRunsBefore + 1)
+        #expect(analyticsAfter.runsEnded == analyticsBefore.runsEnded + 1)
+        #expect(analyticsAfter.normalRunsEnded == analyticsBefore.normalRunsEnded + 1)
+    }
+
+    @Test
+    func continueEligibleTerminalStatesDoNotFinalizeBeforeContinueResolves() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let completedRunsBefore = GameCenterService.shared.completedRunCount
+        let analyticsBefore = analyticsSnapshot()
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let state = scene.testingTerminalFinalizationState
+        let analyticsAfter = analyticsSnapshot()
+
+        #expect(state.runMode == .normal)
+        #expect(state.isGameOver)
+        #expect(state.isOverlayPresented)
+        #expect(!state.hasFinalizedRun)
+        #expect(state.canShowContinueAfterLoss)
+        #expect(GameCenterService.shared.completedRunCount == completedRunsBefore)
+        #expect(analyticsAfter.runsEnded == analyticsBefore.runsEnded)
+        #expect(analyticsAfter.normalRunsEnded == analyticsBefore.normalRunsEnded)
+    }
+}
+
+@Suite(.serialized)
+struct MonetizationOfferLifecycleRegressionTests {
+    @Test
+    func continueAndRerollVisibilityFollowPerRunLifecycleWithoutShownDoubleCounts() {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let analyticsBefore = analyticsSnapshot()
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+
+        scene.testingBeginSceneRun(mode: .normal)
+        let analyticsAfterBegin = analyticsSnapshot()
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let activeState = scene.testingMonetizationOfferLifecycleState
+        let activeAnalytics = analyticsSnapshot()
+
+        #expect(activeState.runMode == .normal)
+        #expect(!activeState.isGameOver)
+        #expect(!activeState.canShowContinueAfterLoss)
+        #expect(!activeState.visibleRerollOfferSlots.isEmpty)
+        #expect(activeAnalytics.continueOfferShownCount == analyticsAfterBegin.continueOfferShownCount)
+        #expect(activeAnalytics.rerollOfferShownCount == analyticsAfterBegin.rerollOfferShownCount)
+        #expect(analyticsAfterBegin.rerollOfferShownCount > analyticsBefore.rerollOfferShownCount)
+
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let analyticsAfterTerminalBegin = analyticsSnapshot()
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let terminalState = scene.testingMonetizationOfferLifecycleState
+        let terminalAnalytics = analyticsSnapshot()
+
+        #expect(terminalState.isGameOver)
+        #expect(terminalState.canShowContinueAfterLoss)
+        #expect(terminalState.hasRecordedContinueOfferForCurrentLoss)
+        #expect(terminalState.visibleRerollOfferSlots.isEmpty)
+        #expect(analyticsAfterTerminalBegin.continueOfferShownCount == activeAnalytics.continueOfferShownCount + 1)
+        #expect(terminalAnalytics.continueOfferShownCount == analyticsAfterTerminalBegin.continueOfferShownCount)
+        #expect(terminalAnalytics.rerollOfferShownCount == analyticsAfterTerminalBegin.rerollOfferShownCount)
+    }
+
+    @Test
+    func restoredRunsPreserveConsumedOfferStateWithoutFalseOfferAnalytics() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let analyticsBefore = analyticsSnapshot()
+        let restoredSnapshot = try makeConsumedOfferRestoreSnapshot()
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+        let analyticsAfterSceneWarmup = analyticsSnapshot()
+
+        scene.testingRestoreLiveRun(from: restoredSnapshot)
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let state = scene.testingMonetizationOfferLifecycleState
+        let monetizationState = MonetizationService.shared.testingRunState
+        let analyticsAfter = analyticsSnapshot()
+
+        #expect(state.runMode == .normal)
+        #expect(!state.isGameOver)
+        #expect(state.hasUsedContinue)
+        #expect(state.hasUsedReroll)
+        #expect(!state.canShowContinueAfterLoss)
+        #expect(state.visibleRerollOfferSlots.isEmpty)
+        #expect(monetizationState.isActive)
+        #expect(!monetizationState.hasEnded)
+        #expect(monetizationState.continueOfferCount == 1)
+        #expect(monetizationState.rerollOfferCount == 1)
+        #expect(analyticsAfterSceneWarmup.continueOfferShownCount >= analyticsBefore.continueOfferShownCount)
+        #expect(analyticsAfter.continueOfferShownCount == analyticsAfterSceneWarmup.continueOfferShownCount)
+        #expect(analyticsAfter.continueUsedCount == analyticsAfterSceneWarmup.continueUsedCount)
+        #expect(analyticsAfter.rerollOfferShownCount == analyticsAfterSceneWarmup.rerollOfferShownCount)
+        #expect(analyticsAfter.rerollUsedCount == analyticsAfterSceneWarmup.rerollUsedCount)
+    }
+
+    @Test
+    func newRunResetsConsumedOfferStateWithoutDoubleCountingUsedAnalytics() {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        let analyticsBefore = analyticsSnapshot()
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingSyncAll()
+
+        let rerollSlot = scene.testingMonetizationOfferLifecycleState.visibleRerollOfferSlots.sorted().first
+        #expect(rerollSlot != nil)
+        if let rerollSlot {
+            #expect(scene.testingResolveRerollRewarded(at: rerollSlot))
+        }
+
+        let afterRerollState = scene.testingMonetizationOfferLifecycleState
+        let afterRerollMonetization = MonetizationService.shared.testingRunState
+        let analyticsAfterReroll = analyticsSnapshot()
+
+        #expect(afterRerollState.hasUsedReroll)
+        #expect(afterRerollState.visibleRerollOfferSlots.isEmpty)
+        #expect(afterRerollMonetization.rerollOfferCount == 1)
+        #expect(analyticsAfterReroll.rerollUsedCount == analyticsBefore.rerollUsedCount + 1)
+
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingSyncAll()
+
+        let afterRerollResetState = scene.testingMonetizationOfferLifecycleState
+        let afterRerollResetMonetization = MonetizationService.shared.testingRunState
+        let analyticsAfterRerollReset = analyticsSnapshot()
+
+        #expect(!afterRerollResetState.hasUsedReroll)
+        #expect(!afterRerollResetState.visibleRerollOfferSlots.isEmpty)
+        #expect(afterRerollResetMonetization.rerollOfferCount == 0)
+        #expect(analyticsAfterRerollReset.rerollUsedCount == analyticsAfterReroll.rerollUsedCount)
+
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+
+        #expect(scene.testingResolveContinueRewardedIfPossible())
+
+        let afterContinueState = scene.testingMonetizationOfferLifecycleState
+        let afterContinueMonetization = MonetizationService.shared.testingRunState
+        let analyticsAfterContinue = analyticsSnapshot()
+
+        #expect(afterContinueState.hasUsedContinue)
+        #expect(!afterContinueState.canShowContinueAfterLoss)
+        #expect(afterContinueMonetization.continueOfferCount == 1)
+        #expect(analyticsAfterContinue.continueUsedCount == analyticsBefore.continueUsedCount + 1)
+
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+
+        let afterContinueResetState = scene.testingMonetizationOfferLifecycleState
+        let afterContinueResetMonetization = MonetizationService.shared.testingRunState
+        let analyticsAfterContinueReset = analyticsSnapshot()
+
+        #expect(afterContinueResetState.runMode == .normal)
+        #expect(!afterContinueResetState.isGameOver)
+        #expect(!afterContinueResetState.hasUsedContinue)
+        #expect(!afterContinueResetState.canShowContinueAfterLoss)
+        #expect(afterContinueResetMonetization.continueOfferCount == 0)
+        #expect(analyticsAfterContinueReset.continueUsedCount == analyticsAfterContinue.continueUsedCount)
+        #expect(analyticsAfterContinueReset.rerollUsedCount == analyticsAfterContinue.rerollUsedCount)
+    }
 }
 
 private func firstLegalAnchor(for piece: HexPiece, in engine: GameEngine) -> HexCoordinate? {
@@ -185,6 +1086,20 @@ private func pieceSignatures(_ pieces: [HexPiece?]) -> [String?] {
     pieces.map { $0.map(pieceSignature) }
 }
 
+private func batchOffsetSignatures(_ pieces: [HexPiece]) -> [String] {
+    pieces.map { piece in
+        piece.offsets
+            .sorted { lhs, rhs in
+                if lhs.col == rhs.col {
+                    return lhs.row < rhs.row
+                }
+                return lhs.col < rhs.col
+            }
+            .map { "\($0.col):\($0.row)" }
+            .joined(separator: "|")
+    }
+}
+
 private func boardSignature(_ snapshot: HexBoard.Snapshot) -> [String] {
     snapshot.cells.map { "\($0.coordinate.col):\($0.coordinate.row)#\($0.colorHex)" }
 }
@@ -196,6 +1111,75 @@ private func encodedSnapshot(_ snapshot: GameEngine.LiveRunSnapshot) throws -> S
     return String(decoding: data, as: UTF8.self)
 }
 
+private func terminalTrayPieces() -> [HexPiece] {
+    [
+        HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(0, 1)], color: UIColor(hex: "7A74F7")),
+        HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)], color: UIColor(hex: "55A7F6")),
+        HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0), HexCoordinate(0, 1)], color: UIColor(hex: "63C7B0"))
+    ]
+}
+
+private func analyticsSnapshot() -> AnalyticsSnapshot {
+    let data = AnalyticsService.shared.exportSnapshot().data(using: .utf8) ?? Data()
+    let snapshot = try? JSONDecoder().decode(AnalyticsSnapshot.self, from: data)
+    return snapshot ?? AnalyticsSnapshot(
+        continueOfferShownCount: 0,
+        continueUsedCount: 0,
+        rerollOfferShownCount: 0,
+        rerollUsedCount: 0,
+        runsEnded: 0,
+        normalRunsEnded: 0,
+        dailyRunsEnded: 0,
+        dailyChallengeCompletedCount: 0
+    )
+}
+
+private func uniqueDayID() -> String {
+    let token = abs(UUID().uuidString.hashValue)
+    let month = token % 12 + 1
+    let day = (token / 12) % 28 + 1
+    return String(format: "2099-%02d-%02d", month, day)
+}
+
+private func makeResumableNormalSnapshot(seed: UInt64, placements: Int) throws -> GameEngine.LiveRunSnapshot {
+    let engine = GameEngine()
+    engine.startNormalRun(seed: seed)
+
+    for _ in 0..<placements {
+        let slotIndex = try #require(engine.pieces.firstIndex { $0 != nil })
+        let piece = try #require(engine.pieces[slotIndex])
+        let anchor = try #require(firstLegalAnchor(for: piece, in: engine))
+        engine.place(piece, at: anchor, slotIndex: slotIndex)
+    }
+
+    return try #require(engine.makeLiveRunSnapshot(runStartBest: 0))
+}
+
+private func makeConsumedOfferRestoreSnapshot() throws -> GameEngine.LiveRunSnapshot {
+    let engine = GameEngine()
+    engine.startNormalRun(seed: 0xBEEF)
+    engine.loadCaptureTerminalState(
+        mode: .normal,
+        emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+        tray: terminalTrayPieces(),
+        score: 240,
+        best: 240,
+        combo: 2,
+        didClearAny: true,
+        maxCombo: 2
+    )
+
+    #expect(engine.continueAfterLoss())
+    let rerollSlot = try #require(firstRerollableSlot(in: engine))
+    #expect(engine.rerollPiece(at: rerollSlot))
+
+    return try #require(engine.makeLiveRunSnapshot(runStartBest: 180))
+}
+
+private func firstRerollableSlot(in engine: GameEngine) -> Int? {
+    engine.pieces.indices.first { engine.canRerollPiece(at: $0) }
+}
+
 private func makeDefaults() -> (UserDefaults, String) {
     let suiteName = "CriticalPathRegressionTests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName) ?? .standard
@@ -205,4 +1189,20 @@ private func makeDefaults() -> (UserDefaults, String) {
 
 private func clear(_ suiteName: String) {
     UserDefaults.standard.removePersistentDomain(forName: suiteName)
+}
+
+private func clearSharedResumeState() {
+    SystemEntryService.shared.clearResumableRun()
+    LiveRunPersistenceService.shared.clear()
+}
+
+private struct AnalyticsSnapshot: Decodable {
+    let continueOfferShownCount: Int
+    let continueUsedCount: Int
+    let rerollOfferShownCount: Int
+    let rerollUsedCount: Int
+    let runsEnded: Int
+    let normalRunsEnded: Int
+    let dailyRunsEnded: Int
+    let dailyChallengeCompletedCount: Int
 }

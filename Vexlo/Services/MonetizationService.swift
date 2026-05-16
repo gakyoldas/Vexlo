@@ -86,6 +86,7 @@ final class MonetizationService {
     private var supporterFoundationConfigured = false
     private var sessionStarted = false
     private var runState = MonetizationRunState()
+    private var testingCanPresentOverrides: [MonetizationOfferKind: Bool] = [:]
 
     private init() {}
 
@@ -119,7 +120,10 @@ final class MonetizationService {
     }
 
     func canPresent(_ offer: MonetizationOfferKind) -> Bool {
-        policy.allows(
+        if let override = testingCanPresentOverrides[offer] {
+            return override
+        }
+        return policy.allows(
             offer,
             player: MonetizationPlayerState(sessionCount: sessionCount, runsStarted: runsStarted),
             run: runState,
@@ -242,5 +246,35 @@ final class MonetizationService {
         case .supporterUnlock:
             nil
         }
+    }
+}
+
+extension MonetizationService {
+    struct TestingRunState {
+        let isActive: Bool
+        let hasEnded: Bool
+        let continueOfferCount: Int
+        let rerollOfferCount: Int
+    }
+
+    var testingRunState: TestingRunState {
+        TestingRunState(
+            isActive: runState.isActive,
+            hasEnded: runState.hasEnded,
+            continueOfferCount: runState.continueOfferCount,
+            rerollOfferCount: runState.rerollOfferCount
+        )
+    }
+
+    func testingSetCanPresentOverride(_ isEnabled: Bool?, for offer: MonetizationOfferKind) {
+        if let isEnabled {
+            testingCanPresentOverrides[offer] = isEnabled
+        } else {
+            testingCanPresentOverrides.removeValue(forKey: offer)
+        }
+    }
+
+    func testingClearCanPresentOverrides() {
+        testingCanPresentOverrides.removeAll()
     }
 }

@@ -7,10 +7,24 @@ enum VexloStrings {
         static let score = localized("hud.score", value: "SCORE")
         static let title = localized("hud.title", value: "VEXLO")
         static let mainRun = localized("hud.main_run", value: "Main Run")
+        static let boardReading = localized("hud.board_reading", value: "Board reading")
         static let todaysChallenge = localized("hud.todays_challenge", value: "Today's Challenge")
+        static let todaysBoard = localized("hud.todays_board", value: "Today's Board")
 
         static func todaysChallenge(streak: Int) -> String {
             String(format: localized("hud.todays_challenge_streak", value: "Today's Challenge • %d"), streak)
+        }
+
+        static func todaysChallenge(weekday: String) -> String {
+            String(format: localized("hud.todays_challenge_weekday", value: "Today's Challenge • %@"), weekday)
+        }
+
+        static func todaysBoard(weekday: String) -> String {
+            String(format: localized("hud.todays_board_weekday", value: "Today's Board • %@"), weekday)
+        }
+
+        static func dailyBoard(weekday: String) -> String {
+            String(format: localized("hud.daily_board_weekday", value: "%@ Board"), weekday)
         }
     }
 
@@ -19,7 +33,9 @@ enum VexloStrings {
         static let dailyComplete = localized("overlay.daily_complete", value: "Daily Complete")
         static let gameCenter = localized("overlay.game_center", value: "Game Center")
         static let leaderboard = localized("overlay.leaderboard", value: "Leaderboard")
+        static let shareResult = localized("overlay.share_result", value: "Share Result")
         static let supporterPack = localized("overlay.supporter_pack", value: "Supporter Pack")
+        static let supporterPackValue = localized("overlay.supporter_pack_value", value: "Supporter Pack • Ad-Free Continue + Reroll")
         static let restorePurchases = localized("overlay.restore_purchases", value: "Restore Purchases")
         static let exportDiagnostics = localized("overlay.export_diagnostics", value: "Export Diagnostics")
         static let continueRun = localized("overlay.continue_run", value: "Continue Run")
@@ -30,7 +46,15 @@ enum VexloStrings {
         static let challengeFriends = localized("overlay.challenge_friends", value: "Challenge Friends")
         static let playTogether = localized("overlay.play_together", value: "Play Together")
         static let share = localized("overlay.share", value: "Share")
-        static let oneCleanerRun = localized("overlay.one_cleaner_run", value: "Tied Best")
+        static let oneCleanerRun = localized("overlay.one_cleaner_run", value: "One cleaner run was there")
+        static let runRecoveredLate = localized("overlay.run_recovered_late", value: "Late recovery")
+        static let runChainLed = localized("overlay.run_chain_led", value: "Chain-led")
+        static let runSteadyClears = localized("overlay.run_steady_clears", value: "Steady clears")
+        static let runTightBoard = localized("overlay.run_tight_board", value: "Tight board")
+
+        static func runCount(_ value: Int) -> String {
+            String(format: localized("overlay.run_count", value: "Run %d"), value)
+        }
 
         static func streak(_ value: Int) -> String {
             String(format: localized("overlay.streak_format", value: "Streak %d"), value)
@@ -46,11 +70,25 @@ enum VexloStrings {
         static let soundOff = localized("utility.sound_off", value: "Sound Off")
         static let hapticsOn = localized("utility.haptics_on", value: "Haptics On")
         static let hapticsOff = localized("utility.haptics_off", value: "Haptics Off")
+        static let startNewRun = localized("utility.start_new_run", value: "Start New Run")
+        static let studio = localized("utility.studio", value: "Northfall Studio")
+        static let startNewRunAlertTitle = localized("utility.start_new_run_alert_title", value: "Start New Run?")
+        static let startNewRunAlertMessage = localized("utility.start_new_run_alert_message", value: "Your current run will be abandoned.")
+        static let cancel = localized("utility.cancel", value: "Cancel")
     }
 
     enum Onboarding {
         static let dragToBoard = localized("onboarding.drag_to_board", value: "Drag a piece to the board")
-        static let completeLine = localized("onboarding.complete_line", value: "Complete a line to clear")
+        static let completeLine = localized("onboarding.complete_line", value: "Chain the next clear to lift score")
+        static let chainBuildsScore = localized("onboarding.chain_builds_score", value: "Consecutive clears build a chain")
+
+        static func comboClear(_ value: Int) -> String {
+            String(format: localized("onboarding.combo_multi_clear", value: "Combo ×%d"), value)
+        }
+
+        static func chainStreak(_ value: Int) -> String {
+            String(format: localized("onboarding.chain_streak", value: "Chain ×%d"), value)
+        }
     }
 
     enum Accessibility {
@@ -75,6 +113,8 @@ enum VexloStrings {
         static let supporterPackHint = localized("accessibility.supporter_pack_hint", value: "Unlocks ad-free continue and reroll when available")
         static let restorePurchasesHint = localized("accessibility.restore_purchases_hint", value: "Restores your previous purchase")
         static let exportDiagnosticsHint = localized("accessibility.export_diagnostics_hint", value: "Shares a tester diagnostics snapshot")
+        static let startNewRun = localized("accessibility.start_new_run", value: "Start New Run")
+        static let startNewRunHint = localized("accessibility.start_new_run_hint", value: "Starts a fresh run after confirmation.")
         static let rerollPiece = localized("accessibility.reroll_piece", value: "Reroll Piece")
         static let rerollPieceHint = localized("accessibility.reroll_piece_hint", value: "Replaces this tray piece when a reroll is available")
         static let soundState = localized("accessibility.sound_state", value: "Sound")

@@ -39,6 +39,10 @@ final class GameCenterService: NSObject, GKGameCenterControllerDelegate {
     private var activityListener: AnyObject?
     var onRouteRequest: ((Route) -> Void)?
 
+    var completedRunCount: Int {
+        defaults.integer(forKey: completedRunsKey)
+    }
+
     private override init() {}
 
     func configure(rootViewControllerProvider: @escaping () -> UIViewController?) {
@@ -282,7 +286,7 @@ private final class GameCenterActivityListener: NSObject, GKLocalPlayerListener 
             route = nil
         }
         guard let route else { return false }
-        await routeHandler(route)
+        routeHandler(route)
         return true
     }
 }

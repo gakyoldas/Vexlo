@@ -3,14 +3,21 @@
 "hud.score" = "SCORE";
 "hud.title" = "VEXLO";
 "hud.main_run" = "Main Run";
+"hud.board_reading" = "Board reading";
 "hud.todays_challenge" = "Today's Challenge";
+"hud.todays_board" = "Today's Board";
 "hud.todays_challenge_streak" = "Today's Challenge • %d";
+"hud.todays_challenge_weekday" = "Today's Challenge • %@";
+"hud.todays_board_weekday" = "Today's Board • %@";
+"hud.daily_board_weekday" = "%@ Board";
 
 "overlay.game_over" = "Game Over";
 "overlay.daily_complete" = "Daily Complete";
 "overlay.game_center" = "Game Center";
 "overlay.leaderboard" = "Leaderboard";
+"overlay.share_result" = "Share Result";
 "overlay.supporter_pack" = "Supporter Pack";
+"overlay.supporter_pack_value" = "Supporter Pack • Ad-Free Continue + Reroll";
 "overlay.restore_purchases" = "Restore Purchases";
 "overlay.export_diagnostics" = "Export Diagnostics";
 "overlay.continue_run" = "Continue Run";
@@ -21,7 +28,8 @@
 "overlay.challenge_friends" = "Challenge Friends";
 "overlay.play_together" = "Play Together";
 "overlay.share" = "Share";
-"overlay.one_cleaner_run" = "One cleaner run does it";
+"overlay.one_cleaner_run" = "One cleaner run was there";
+"overlay.run_count" = "Run %d";
 "overlay.streak_format" = "Streak %d";
 "overlay.gap_to_best" = "%d to best";
 
@@ -29,9 +37,17 @@
 "utility.sound_off" = "Sound Off";
 "utility.haptics_on" = "Haptics On";
 "utility.haptics_off" = "Haptics Off";
+"utility.start_new_run" = "Start New Run";
+"utility.studio" = "Northfall Studio";
+"utility.start_new_run_alert_title" = "Start New Run?";
+"utility.start_new_run_alert_message" = "Your current run will be abandoned.";
+"utility.cancel" = "Cancel";
 
 "onboarding.drag_to_board" = "Drag a piece to the board";
-"onboarding.complete_line" = "Complete a line to clear";
+"onboarding.complete_line" = "Chain the next clear to lift score";
+"onboarding.chain_builds_score" = "Consecutive clears build a chain";
+"onboarding.combo_multi_clear" = "Combo ×%d";
+"onboarding.chain_streak" = "Chain ×%d";
 
 "accessibility.utility_menu" = "Utility";
 "accessibility.utility_menu_hint" = "Opens game controls";
@@ -54,6 +70,8 @@
 "accessibility.supporter_pack_hint" = "Unlocks ad-free continue and reroll when available";
 "accessibility.restore_purchases_hint" = "Restores your previous purchase";
 "accessibility.export_diagnostics_hint" = "Shares a tester diagnostics snapshot";
+"accessibility.start_new_run" = "Start New Run";
+"accessibility.start_new_run_hint" = "Starts a fresh run after confirmation.";
 "accessibility.reroll_piece" = "Reroll Piece";
 "accessibility.reroll_piece_hint" = "Replaces this tray piece when a reroll is available";
 "accessibility.sound_state" = "Sound";

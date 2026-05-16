@@ -93,6 +93,11 @@ enum PieceFactory {
         case pressure
     }
 
+    fileprivate enum GenerationProfile {
+        case standard
+        case normalModeEarlyTension
+    }
+
     enum BoardCharacter: Int {
         case open = 0      // glacial: relief-biased, spacious opening
         case balanced = 1  // lucid: unchanged distribution
@@ -134,18 +139,39 @@ enum PieceFactory {
     static func openingBatch(count: Int) -> [HexPiece] {
         var generator = SystemRandomNumberGenerator()
         var memory = GenerationMemory()
-        return makeBatch(count: count, occupiedCellCount: 0, opening: true, memory: &memory, using: &generator)
+        return makeBatch(
+            count: count,
+            occupiedCellCount: 0,
+            opening: true,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func randomBatch(count: Int, occupiedCellCount: Int) -> [HexPiece] {
         var generator = SystemRandomNumberGenerator()
         var memory = GenerationMemory()
-        return makeBatch(count: count, occupiedCellCount: occupiedCellCount, opening: false, memory: &memory, using: &generator)
+        return makeBatch(
+            count: count,
+            occupiedCellCount: occupiedCellCount,
+            opening: false,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func openingBatch<R: RandomNumberGenerator>(count: Int, using generator: inout R) -> [HexPiece] {
         var memory = GenerationMemory()
-        return makeBatch(count: count, occupiedCellCount: 0, opening: true, memory: &memory, using: &generator)
+        return makeBatch(
+            count: count,
+            occupiedCellCount: 0,
+            opening: true,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func randomBatch<R: RandomNumberGenerator>(
@@ -154,7 +180,29 @@ enum PieceFactory {
         using generator: inout R
     ) -> [HexPiece] {
         var memory = GenerationMemory()
-        return makeBatch(count: count, occupiedCellCount: occupiedCellCount, opening: false, memory: &memory, using: &generator)
+        return makeBatch(
+            count: count,
+            occupiedCellCount: occupiedCellCount,
+            opening: false,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
+    }
+
+    static func openingBatch<R: RandomNumberGenerator>(
+        count: Int,
+        memory: inout GenerationMemory,
+        using generator: inout R
+    ) -> [HexPiece] {
+        makeBatch(
+            count: count,
+            occupiedCellCount: 0,
+            opening: true,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func openingBatch<R: RandomNumberGenerator>(
@@ -163,7 +211,31 @@ enum PieceFactory {
         using generator: inout R,
         boardCharacter: BoardCharacter = .balanced
     ) -> [HexPiece] {
-        makeBatch(count: count, occupiedCellCount: 0, opening: true, boardCharacter: boardCharacter, memory: &memory, using: &generator)
+        makeBatch(
+            count: count,
+            occupiedCellCount: 0,
+            opening: true,
+            boardCharacter: boardCharacter,
+            generationProfile: .standard,
+            memory: &memory,
+            using: &generator
+        )
+    }
+
+    static func randomBatch<R: RandomNumberGenerator>(
+        count: Int,
+        occupiedCellCount: Int,
+        memory: inout GenerationMemory,
+        using generator: inout R
+    ) -> [HexPiece] {
+        makeBatch(
+            count: count,
+            occupiedCellCount: occupiedCellCount,
+            opening: false,
+            generationProfile: .normalModeEarlyTension,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func randomBatch<R: RandomNumberGenerator>(
@@ -173,7 +245,15 @@ enum PieceFactory {
         using generator: inout R,
         boardCharacter: BoardCharacter = .balanced
     ) -> [HexPiece] {
-        makeBatch(count: count, occupiedCellCount: occupiedCellCount, opening: false, boardCharacter: boardCharacter, memory: &memory, using: &generator)
+        makeBatch(
+            count: count,
+            occupiedCellCount: occupiedCellCount,
+            opening: false,
+            boardCharacter: boardCharacter,
+            generationProfile: .standard,
+            memory: &memory,
+            using: &generator
+        )
     }
 
     static func rescueBatch(
@@ -241,6 +321,7 @@ enum PieceFactory {
         occupiedCellCount: Int,
         opening: Bool,
         boardCharacter: BoardCharacter = .balanced,
+        generationProfile: GenerationProfile = .standard,
         memory: inout GenerationMemory,
         using generator: inout R
     ) -> [HexPiece] {
@@ -253,10 +334,17 @@ enum PieceFactory {
                 occupiedCellCount: occupiedCellCount,
                 opening: opening,
                 boardCharacter: boardCharacter,
+                generationProfile: generationProfile,
                 memory: memory,
                 using: &generator
             )
-            let score = scoreBatch(candidate, occupiedCellCount: occupiedCellCount, opening: opening, memory: memory)
+            let score = scoreBatch(
+                candidate,
+                occupiedCellCount: occupiedCellCount,
+                opening: opening,
+                generationProfile: generationProfile,
+                memory: memory
+            )
             if score > bestScore {
                 bestScore = score
                 bestProfiles = candidate
@@ -277,7 +365,12 @@ enum PieceFactory {
         template.id == "hook3"
     }
 
-    private static func weightedTemplates(for occupiedCellCount: Int, opening: Bool, boardCharacter: BoardCharacter = .balanced) -> [WeightedTemplate] {
+    private static func weightedTemplates(
+        for occupiedCellCount: Int,
+        opening: Bool,
+        boardCharacter: BoardCharacter = .balanced,
+        generationProfile: GenerationProfile = .standard
+    ) -> [WeightedTemplate] {
         templates.compactMap { template in
             let profile = profile(for: template)
             let size = profile.size
@@ -286,6 +379,14 @@ enum PieceFactory {
                 guard template.tier < 2 else { return nil }
                 weight += template.tier == 0 ? 120 : 40
                 weight += size <= 2 ? 25 : 0
+                if generationProfile == .normalModeEarlyTension {
+                    if template.tier == 0 {
+                        weight -= 16
+                    }
+                    if size <= 2 {
+                        weight -= 11
+                    }
+                }
             } else if occupiedCellCount < 8 {
                 weight += template.tier == 0 ? 60 : 15
                 weight += size <= 3 ? 20 : -10
@@ -294,6 +395,17 @@ enum PieceFactory {
                 }
                 if template.id == "single" {
                     weight -= 10
+                }
+                if generationProfile == .normalModeEarlyTension {
+                    if template.tier == 0 {
+                        weight -= 8
+                    }
+                    if size <= 3 {
+                        weight -= 4
+                    }
+                    if profile.role == .pivot && size == 3 && !isGapPivot(template) {
+                        weight += 4
+                    }
                 }
             } else if occupiedCellCount < 18 {
                 weight += template.tier == 1 ? 20 : 0
@@ -315,7 +427,8 @@ enum PieceFactory {
                     weight += occupiedCellCount < 8 ? -18 : (occupiedCellCount < 18 ? 6 : -8)
                 }
                 if isGapPivot(template) {
-                    weight += occupiedCellCount < 8 ? -32 : (occupiedCellCount < 18 ? 8 : 2)
+                    let earlyGapPivotPenalty = generationProfile == .normalModeEarlyTension ? -20 : -32
+                    weight += occupiedCellCount < 8 ? earlyGapPivotPenalty : (occupiedCellCount < 18 ? 8 : 2)
                 }
             }
             switch boardCharacter {
@@ -349,10 +462,16 @@ enum PieceFactory {
         occupiedCellCount: Int,
         opening: Bool,
         boardCharacter: BoardCharacter = .balanced,
+        generationProfile: GenerationProfile = .standard,
         memory: GenerationMemory,
         using generator: inout R
     ) -> [TemplateProfile] {
-        var available = weightedTemplates(for: occupiedCellCount, opening: opening, boardCharacter: boardCharacter)
+        var available = weightedTemplates(
+            for: occupiedCellCount,
+            opening: opening,
+            boardCharacter: boardCharacter,
+            generationProfile: generationProfile
+        )
         var selected: [TemplateProfile] = []
         while selected.count < count && !available.isEmpty {
             let picked = pickTemplate(from: available, using: &generator)
@@ -403,6 +522,7 @@ enum PieceFactory {
         _ batch: [TemplateProfile],
         occupiedCellCount: Int,
         opening: Bool,
+        generationProfile: GenerationProfile = .standard,
         memory: GenerationMemory
     ) -> Int {
         guard !batch.isEmpty else { return Int.min }
@@ -462,22 +582,22 @@ enum PieceFactory {
         }
 
         if opening {
-            score += reliefCount * 22
+            score += reliefCount * (generationProfile == .normalModeEarlyTension ? 18 : 22)
             score += pivotCount * 14
             score -= pressureCount * 18
             if reliefCount == 1 && pivotCount == 2 {
                 score += 22
             } else if reliefCount == 2 && pivotCount == 1 {
-                score += 6
+                score += generationProfile == .normalModeEarlyTension ? 2 : 6
             }
             if sizes.contains(1) && sizes.contains(2) && sizes.contains(3) {
                 score += 20
             } else if lowFootprintCount >= 1 && sizes.contains(3) {
-                score += 10
+                score += generationProfile == .normalModeEarlyTension ? 8 : 10
             }
         } else if occupiedCellCount < 8 {
-            score += reliefCount * 10
-            score += pivotCount * 14
+            score += reliefCount * (generationProfile == .normalModeEarlyTension ? 8 : 10)
+            score += pivotCount * (generationProfile == .normalModeEarlyTension ? 16 : 14)
             score -= max(0, pressureCount - 1) * 14
             if memory.batchCount <= 1 && reliefCount == 1 && pivotCount >= 1 {
                 score += 10
@@ -497,7 +617,7 @@ enum PieceFactory {
 
         if !opening {
             if occupiedCellCount < 8 {
-                if reliefCount > 1 { score -= 14 }
+                if reliefCount > 1 { score -= generationProfile == .normalModeEarlyTension ? 18 : 14 }
                 if reliefCount == 0 { score -= 6 }
             } else if occupiedCellCount < 18 {
                 if reliefCount == 1 { score += 8 }
@@ -514,7 +634,7 @@ enum PieceFactory {
         if opening && gapPivotCount > 0 {
             score -= 80
         } else if occupiedCellCount < 8 && gapPivotCount > 0 {
-            score -= 34
+            score -= generationProfile == .normalModeEarlyTension ? 20 : 34
         } else if occupiedCellCount < 18 {
             if gapPivotCount == 1 { score += 8 }
             if gapPivotCount > 1 { score -= 36 }

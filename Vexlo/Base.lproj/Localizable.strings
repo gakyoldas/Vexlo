@@ -3,6 +3,7 @@
 "hud.score" = "SCORE";
 "hud.title" = "VEXLO";
 "hud.main_run" = "Main Run";
+"hud.board_reading" = "Board reading";
 "hud.todays_challenge" = "Today's Challenge";
 "hud.todays_challenge_streak" = "Today's Challenge • %d";
 

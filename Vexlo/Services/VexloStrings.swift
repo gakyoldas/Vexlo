@@ -7,6 +7,7 @@ enum VexloStrings {
         static let score = localized("hud.score", value: "SCORE")
         static let title = localized("hud.title", value: "VEXLO")
         static let mainRun = localized("hud.main_run", value: "Main Run")
+        static let boardReading = localized("hud.board_reading", value: "Board reading")
         static let todaysChallenge = localized("hud.todays_challenge", value: "Today's Challenge")
 
         static func todaysChallenge(streak: Int) -> String {

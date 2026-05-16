@@ -69,6 +69,35 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func normalModeOpeningGenerationTightensEarlierThanExplicitBalancedBoardCharacterPath() {
+        var normalGenerator = PieceFactory.SeededGenerator(seed: 2)
+        var normalMemory = PieceFactory.GenerationMemory()
+        let normalOpening = PieceFactory.openingBatch(count: 3, memory: &normalMemory, using: &normalGenerator)
+        let normalRefill = PieceFactory.randomBatch(count: 3, occupiedCellCount: 5, memory: &normalMemory, using: &normalGenerator)
+
+        var standardGenerator = PieceFactory.SeededGenerator(seed: 2)
+        var standardMemory = PieceFactory.GenerationMemory()
+        let standardOpening = PieceFactory.openingBatch(
+            count: 3,
+            memory: &standardMemory,
+            using: &standardGenerator,
+            boardCharacter: .balanced
+        )
+        let standardRefill = PieceFactory.randomBatch(
+            count: 3,
+            occupiedCellCount: 5,
+            memory: &standardMemory,
+            using: &standardGenerator,
+            boardCharacter: .balanced
+        )
+
+        #expect(batchOffsetSignatures(normalOpening) == ["0:0|1:0", "0:0|1:0|1:1", "0:0|0:1|0:2"])
+        #expect(batchOffsetSignatures(standardOpening) == ["0:0|0:1|1:0", "0:0|1:0", "0:0"])
+        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|1:0", "0:0|0:1", "0:0|1:0|1:1"])
+        #expect(batchOffsetSignatures(standardRefill) == ["0:0|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
+    }
+
+    @Test
     func rerollReplacesOnlyOneTrayPieceAndPreservesRunState() throws {
         let engine = GameEngine()
         engine.startNormalRun(seed: 0xBEEF)
@@ -150,6 +179,52 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func normalOpeningModeLabelTextUsesBoardReadingThesis() {
+        #expect(VexloStrings.HUD.boardReading == "Board reading")
+        #expect(GameScene.normalOpeningModeLabelText() == "Board reading")
+    }
+
+    @Test
+    func dragPreviewProfilesDistinguishValidClearAndMultiClearPlacements() {
+        #expect(GameScene.dragPreviewProfile(isValid: false, clearedLineCount: 0) == .invalidPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 0) == .validPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 1) == .clearPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 2) == .multiClearPlacement)
+    }
+
+    @Test
+    func openingReliefPreviewEmphasisOnlyArmsForOpeningValidPlacementsWithMeaningfulBoardContact() {
+        let placement = [HexCoordinate(2, 2), HexCoordinate(3, 2)]
+        let occupied = Set([HexCoordinate(2, 1), HexCoordinate(3, 1)])
+
+        #expect(GameScene.openingReliefContactScore(placementCoordinates: placement, occupiedCoordinates: occupied) == 2)
+        #expect(GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .validPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: false,
+            previewProfile: .validPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .clearPlacement,
+            placementCoordinates: placement,
+            occupiedCoordinates: occupied
+        ))
+        #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: true,
+            previewProfile: .validPlacement,
+            placementCoordinates: [HexCoordinate(0, 0)],
+            occupiedCoordinates: Set([HexCoordinate(0, 1)])
+        ))
+    }
+
+    @Test
     func dailyChallengeCompletionOnlyCountsOncePerDayAndSeedStaysStable() {
         let (defaults, suiteName) = makeDefaults()
         defer { clear(suiteName) }
@@ -183,6 +258,20 @@ private func pieceSignature(_ piece: HexPiece) -> String {
 
 private func pieceSignatures(_ pieces: [HexPiece?]) -> [String?] {
     pieces.map { $0.map(pieceSignature) }
+}
+
+private func batchOffsetSignatures(_ pieces: [HexPiece]) -> [String] {
+    pieces.map { piece in
+        piece.offsets
+            .sorted { lhs, rhs in
+                if lhs.col == rhs.col {
+                    return lhs.row < rhs.row
+                }
+                return lhs.col < rhs.col
+            }
+            .map { "\($0.col):\($0.row)" }
+            .joined(separator: "|")
+    }
 }
 
 private func boardSignature(_ snapshot: HexBoard.Snapshot) -> [String] {

@@ -138,13 +138,6 @@ final class GameScene: SKScene {
         }
     }
 
-    enum DragPreviewProfile: Equatable {
-        case invalidPlacement
-        case validPlacement
-        case clearPlacement
-        case multiClearPlacement
-    }
-
     private struct UtilitySurface {
         enum Action {
             case toggleMenu
@@ -1857,7 +1850,10 @@ final class GameScene: SKScene {
         } else if !LaunchSupport.shared.isCaptureMode {
             let status = DailyChallengeService.shared.currentStatus()
             let weekdayTitle = DailyChallengeService.shared.weekdayTitle(for: status.dayID)
-            if !weekdayTitle.isEmpty {
+            if isOpeningState {
+                modeLabel.text = Self.normalOpeningModeLabelText()
+                modeLabel.alpha = 0.42
+            } else if !weekdayTitle.isEmpty {
                 modeLabel.text = VexloStrings.HUD.todaysBoard(weekday: weekdayTitle)
                 modeLabel.alpha = 0.36
             } else if status.streakCount > 0 {
@@ -1873,6 +1869,10 @@ final class GameScene: SKScene {
 
         fitLabelWidth(modeLabel, maxWidth: size.width * 0.48,
             minimumScale: 0.78)
+    }
+
+    static func normalOpeningModeLabelText() -> String {
+        VexloStrings.HUD.boardReading
     }
 
     private func syncPublicCaptureMetricContextIfNeeded() {
@@ -2996,6 +2996,14 @@ final class GameScene: SKScene {
             return
         }
         let previewProfile = Self.dragPreviewProfile(isValid: valid, clearedLineCount: clearedLineCount)
+        let isOpeningState = engine.scoreEngine.score == 0 && !engine.didClearAny
+        let occupiedCoordinates = Set(engine.board.snapshot.cells.map(\.coordinate))
+        let emphasizesOpeningRelief = Self.shouldEmphasizeOpeningReliefPlacement(
+            isOpeningState: isOpeningState,
+            previewProfile: previewProfile,
+            placementCoordinates: coords,
+            occupiedCoordinates: occupiedCoordinates
+        )
         let clearCells = Set(clearedCoords)
         let nextCells = Set(coords).union(clearCells)
         for coord in dragHighlightedCells.subtracting(nextCells) {
@@ -3015,12 +3023,12 @@ final class GameScene: SKScene {
                     node.setScale(0.985)
                 }
             case .validPlacement:
-                node.fillColor = UIColor(hex: "9CE7D2").withAlphaComponent(0.24)
-                node.strokeColor = UIColor.white.withAlphaComponent(0.34)
-                node.lineWidth = 1.4
+                node.fillColor = UIColor(hex: emphasizesOpeningRelief ? "B7EFD8" : "9CE7D2").withAlphaComponent(emphasizesOpeningRelief ? 0.28 : 0.2)
+                node.strokeColor = UIColor.white.withAlphaComponent(emphasizesOpeningRelief ? 0.4 : 0.3)
+                node.lineWidth = emphasizesOpeningRelief ? 1.52 : 1.28
                 node.alpha = 1.0
                 if !prefersReducedMotion {
-                    node.setScale(1.02)
+                    node.setScale(emphasizesOpeningRelief ? 1.03 : 1.012)
                 }
             case .clearPlacement:
                 let isClearingCell = clearCells.contains(coord)
@@ -3043,7 +3051,12 @@ final class GameScene: SKScene {
             }
         }
         if let dragNode, let piece = dragPiece {
-            applyDragSurfaceState(dragNode, color: piece.color, previewProfile: previewProfile)
+            applyDragSurfaceState(
+                dragNode,
+                color: piece.color,
+                previewProfile: previewProfile,
+                emphasizesOpeningRelief: emphasizesOpeningRelief
+            )
         }
     }
 
@@ -3218,17 +3231,6 @@ final class GameScene: SKScene {
         return nil
     }
 
-    static func dragPreviewProfile(isValid: Bool, clearedLineCount: Int) -> DragPreviewProfile {
-        guard isValid else { return .invalidPlacement }
-        if clearedLineCount > 1 {
-            return .multiClearPlacement
-        }
-        if clearedLineCount == 1 {
-            return .clearPlacement
-        }
-        return .validPlacement
-    }
-
     static func shouldShowFirstChainMasteryHint(
         clearedLineCount: Int,
         chainCount: Int,
@@ -3356,7 +3358,12 @@ final class GameScene: SKScene {
         }
     }
 
-    private func applyDragSurfaceState(_ dragNode: SKNode, color: UIColor, previewProfile: DragPreviewProfile) {
+    private func applyDragSurfaceState(
+        _ dragNode: SKNode,
+        color: UIColor,
+        previewProfile: DragPreviewProfile,
+        emphasizesOpeningRelief: Bool = false
+    ) {
         let emphasis: PieceSurfaceEmphasis
         switch previewProfile {
         case .invalidPlacement:
@@ -3383,6 +3390,13 @@ final class GameScene: SKScene {
                 if !prefersReducedMotion {
                     hex.setScale(1.05)
                 }
+            case .validPlacement where emphasizesOpeningRelief:
+                hex.fillColor = color.withAlphaComponent(0.978)
+                hex.strokeColor = UIColor.white.withAlphaComponent(0.43)
+                hex.lineWidth = 1.16
+                if !prefersReducedMotion {
+                    hex.setScale(1.024)
+                }
             default:
                 break
             }
@@ -3393,8 +3407,8 @@ final class GameScene: SKScene {
                 glint.fillColor = UIColor.white.withAlphaComponent(0.05)
                 glint.alpha = 0.7
             case .validPlacement:
-                glint.fillColor = UIColor.white.withAlphaComponent(0.122)
-                glint.alpha = 0.88
+                glint.fillColor = UIColor.white.withAlphaComponent(emphasizesOpeningRelief ? 0.156 : 0.122)
+                glint.alpha = emphasizesOpeningRelief ? 0.92 : 0.88
             case .clearPlacement:
                 glint.fillColor = UIColor.white.withAlphaComponent(0.262)
                 glint.alpha = 1.0
@@ -3410,10 +3424,10 @@ final class GameScene: SKScene {
                 core.strokeColor = UIColor.white.withAlphaComponent(0.02)
                 core.alpha = 0.7
             case .validPlacement:
-                core.fillColor = UIColor.white.withAlphaComponent(0.034)
-                core.strokeColor = UIColor.white.withAlphaComponent(0.028)
-                core.alpha = 0.79
-                core.setScale(prefersReducedMotion ? 1.0 : 0.986)
+                core.fillColor = UIColor.white.withAlphaComponent(emphasizesOpeningRelief ? 0.048 : 0.034)
+                core.strokeColor = UIColor.white.withAlphaComponent(emphasizesOpeningRelief ? 0.038 : 0.028)
+                core.alpha = emphasizesOpeningRelief ? 0.84 : 0.79
+                core.setScale(prefersReducedMotion ? 1.0 : (emphasizesOpeningRelief ? 0.994 : 0.986))
             case .clearPlacement:
                 core.fillColor = UIColor.white.withAlphaComponent(0.132)
                 core.strokeColor = UIColor.white.withAlphaComponent(0.106)
@@ -3431,8 +3445,8 @@ final class GameScene: SKScene {
             dragNode.alpha = 0.86
             dragNode.setScale(1.0)
         case .validPlacement:
-            dragNode.alpha = 0.975
-            dragNode.setScale(1.0)
+            dragNode.alpha = emphasizesOpeningRelief ? 0.99 : 0.975
+            dragNode.setScale(prefersReducedMotion ? 1.0 : (emphasizesOpeningRelief ? 1.008 : 1.0))
         case .clearPlacement:
             dragNode.alpha = 1.0
             dragNode.setScale(prefersReducedMotion ? 1.0 : 1.032)

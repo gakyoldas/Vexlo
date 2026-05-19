@@ -68,6 +68,27 @@ enum VexloStrings {
             String(format: localized("daily.result.detail", value: "%@ read"), characterName)
         }
 
+        static func completionCaption(weekday: String) -> String {
+            if weekday.isEmpty {
+                return localized("daily.completion.caption_today", value: "Today complete")
+            }
+            return String(
+                format: localized("daily.completion.caption_weekday", value: "%@ · Complete"),
+                weekday
+            )
+        }
+
+        static func closureDetail(characterName: String) -> String {
+            String(
+                format: localized("daily.result.closure", value: "%@ board complete"),
+                characterName
+            )
+        }
+
+        static var todayRecorded: String {
+            localized("daily.result.recorded", value: "Today recorded")
+        }
+
         static func continuity(days: Int) -> String {
             String(format: localized("daily.continuity", value: "Continuity · %d"), days)
         }
@@ -85,6 +106,7 @@ enum VexloStrings {
         static let exportDiagnostics = localized("overlay.export_diagnostics", value: "Export Diagnostics")
         static let continueRun = localized("overlay.continue_run", value: "Continue Run")
         static let playAgain = localized("overlay.play_again", value: "Play Again")
+        static let dailyReplayForBest = localized("overlay.daily_replay", value: "Replay for best")
         static let bestToday = localized("overlay.best_today", value: "Best Today")
         static let newBest = localized("overlay.new_best", value: "New Best")
         static let supporterOwned = localized("overlay.supporter_owned", value: "Supporter Owned")
@@ -155,6 +177,10 @@ enum VexloStrings {
         static let shareResultHint = localized("accessibility.share_result_hint", value: "Opens the native share sheet")
         static let continueRunHint = localized("accessibility.continue_run_hint", value: "Watch a rewarded video to continue this run when available")
         static let playAgainHint = localized("accessibility.play_again_hint", value: "Starts a new run")
+        static let dailyReplayForBestHint = localized(
+            "accessibility.daily_replay_hint",
+            value: "Starts another attempt to improve today's best"
+        )
         static let supporterPackHint = localized("accessibility.supporter_pack_hint", value: "Unlocks ad-free continue and reroll when available")
         static let restorePurchasesHint = localized("accessibility.restore_purchases_hint", value: "Restores your previous purchase")
         static let exportDiagnosticsHint = localized("accessibility.export_diagnostics_hint", value: "Shares a tester diagnostics snapshot")

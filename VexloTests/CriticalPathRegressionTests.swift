@@ -254,6 +254,80 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func dailyRitualClosureMapsCompletionFactsToEditorialResultCopy() {
+        let identity = DailyRitualIdentity.identity(
+            for: "2025-01-15",
+            weekdayTitle: "Wednesday",
+            tone: .iris
+        )
+        let newBest = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 80,
+                isNewBestToday: true,
+                todayBest: 80,
+                streakCount: 3
+            )
+        )
+        #expect(newBest.completionCaption == "Wednesday · Complete")
+        #expect(newBest.closureDetail == "Focused board complete")
+        #expect(newBest.badge == "Best Today")
+        #expect(newBest.progress == "Continuity · 3")
+        #expect(newBest.replayLabel == "Replay for best")
+
+        let recorded = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 42,
+                isNewBestToday: false,
+                todayBest: 80,
+                streakCount: 3
+            )
+        )
+        #expect(recorded.badge == "Today recorded")
+        #expect(recorded.closureDetail == "Focused board complete")
+        #expect(VexloStrings.DailyRitual.completionCaption(weekday: "") == "Today complete")
+    }
+
+    @Test
+    func dailyRitualClosureDoesNotMutateDailyChallengeState() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let service = DailyChallengeService(defaults: defaults, calendar: calendar)
+        let dayID = "2025-01-15"
+        let identity = DailyRitualIdentity.identity(
+            for: dayID,
+            weekdayTitle: service.weekdayTitle(for: dayID),
+            tone: service.toneVariant(for: dayID)
+        )
+        let before = (
+            best: service.bestScore(for: dayID),
+            streak: service.status(for: dayID).streakCount,
+            seed: service.seed(for: dayID)
+        )
+
+        _ = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: dayID,
+                score: 55,
+                isNewBestToday: false,
+                todayBest: before.best,
+                streakCount: 2
+            )
+        )
+
+        #expect(service.bestScore(for: dayID) == before.best)
+        #expect(service.status(for: dayID).streakCount == before.streak)
+        #expect(service.seed(for: dayID) == before.seed)
+    }
+
+    @Test
     func dailyRitualIdentityMapsToneToEditorialCharacterNames() {
         #expect(VexloStrings.DailyRitual.characterName(for: .glacial) == "Spacious")
         #expect(VexloStrings.DailyRitual.characterName(for: .lucid) == "Balanced")
@@ -310,8 +384,30 @@ struct CriticalPathRegressionTests {
         #expect(identitySource.contains("toneVariant(for:"))
         #expect(gameSceneSource.contains("DailyRitualIdentity.identity"))
         #expect(gameSceneSource.contains("ritualIdentity.ritualHeadline"))
-        #expect(gameSceneSource.contains("continuityLine(streakCount:"))
+        #expect(gameSceneSource.contains("DailyRitualClosure.closure"))
+        #expect(!gameSceneSource.contains("resultDetailLine"))
         #expect(!gameSceneSource.contains("VexloStrings.Overlay.streak"))
+        #expect(!gameSceneSource.contains("VexloStrings.Overlay.dailyComplete"))
+    }
+
+    @Test
+    func dailyCompletionClosureLayerStaysReadOnlyPresentation() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let closureSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/DailyRitualClosure.swift"),
+            encoding: .utf8
+        )
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(!closureSource.contains("completeRun"))
+        #expect(!closureSource.contains("UserDefaults"))
+        #expect(!closureSource.contains("seed(for:"))
+        #expect(gameSceneSource.contains("restartText: ritualClosure.replayLabel"))
+        #expect(gameSceneSource.contains("VexloStrings.Overlay.dailyReplayForBest"))
     }
 
     @Test
@@ -1607,7 +1703,7 @@ struct CriticalPathRegressionTests {
                 "VEXLO - Main Run - 210 - New Best"
             ),
             (
-                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Balanced read"),
+                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Balanced board complete"),
                 "VEXLO - Today's Challenge - 70 - Best Today"
             ),
             (
@@ -1615,7 +1711,7 @@ struct CriticalPathRegressionTests {
                     mode: .daily,
                     score: 70,
                     badge: "Best Today",
-                    detail: "Balanced read",
+                    detail: "Balanced board complete",
                     dailyRitualHeadline: "WEDNESDAY · BALANCED BOARD"
                 ),
                 "VEXLO - Today's Challenge - WEDNESDAY · BALANCED BOARD - 70 - Best Today"

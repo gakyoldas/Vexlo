@@ -19,6 +19,10 @@
 "daily.headline.weekday_character_board" = "%@ · %@ Board";
 "daily.headline.character_board" = "%@ Board";
 "daily.result.detail" = "%@ read";
+"daily.completion.caption_weekday" = "%@ · Complete";
+"daily.completion.caption_today" = "Today complete";
+"daily.result.closure" = "%@ board complete";
+"daily.result.recorded" = "Today recorded";
 "daily.continuity" = "Continuity · %d";
 
 "overlay.game_over" = "Game Over";
@@ -32,6 +36,7 @@
 "overlay.export_diagnostics" = "Export Diagnostics";
 "overlay.continue_run" = "Continue Run";
 "overlay.play_again" = "Play Again";
+"overlay.daily_replay" = "Replay for best";
 "overlay.best_today" = "Best Today";
 "overlay.new_best" = "New Best";
 "overlay.supporter_owned" = "Supporter Owned";
@@ -77,6 +82,7 @@
 "accessibility.share_result_hint" = "Opens the native share sheet";
 "accessibility.continue_run_hint" = "Watch a rewarded video to continue this run when available";
 "accessibility.play_again_hint" = "Starts a new run";
+"accessibility.daily_replay_hint" = "Starts another attempt to improve today's best";
 "accessibility.supporter_pack_hint" = "Unlocks ad-free continue and reroll when available";
 "accessibility.restore_purchases_hint" = "Restores your previous purchase";
 "accessibility.export_diagnostics_hint" = "Shares a tester diagnostics snapshot";

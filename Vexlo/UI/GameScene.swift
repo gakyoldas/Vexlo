@@ -272,6 +272,7 @@ final class GameScene: SKScene {
             badge: String,
             detail: String,
             progress: String,
+            restartText: String,
             isDaily: Bool,
             size: CGSize,
             metrics: LayoutMetrics,
@@ -283,6 +284,7 @@ final class GameScene: SKScene {
             badgeLabel.text = badge
             detailLabel.text = detail
             progressLabel.text = progress
+            restartLabel.text = restartText
             applyVisualState(isDaily: isDaily, score: score, size: size, metrics: metrics)
             relayout(size: size, metrics: metrics, isDaily: isDaily, score: score, fitLabelWidth: fitLabelWidth)
         }
@@ -1411,18 +1413,21 @@ final class GameScene: SKScene {
         let badge: String
         let detail: String
         let progress: String
+        let restartText: String
         if engine.isDailyChallenge {
             let dayID = engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
             let ritualIdentity = DailyRitualIdentity.identity(for: dayID)
-            caption = VexloStrings.Overlay.dailyComplete
-            let completion = lastDailyCompletion
-            badge = completion?.isNewBestToday == true ? VexloStrings.Overlay.bestToday : ""
-            detail = ritualIdentity.resultDetailLine
-            let streakCount = completion?.streakCount ?? DailyChallengeService.shared.previewStreakIfCompleted(
-                dayID: dayID
+            let ritualClosure = DailyRitualClosure.closure(
+                identity: ritualIdentity,
+                completion: lastDailyCompletion
             )
-            progress = streakCount > 0 ? ritualIdentity.continuityLine(streakCount: streakCount) : ""
+            caption = ritualClosure.completionCaption
+            badge = ritualClosure.badge
+            detail = ritualClosure.closureDetail
+            progress = ritualClosure.progress
+            restartText = ritualClosure.replayLabel
         } else {
+            restartText = VexloStrings.Overlay.playAgain
             let editorialCharacter = Self.editorialRunCharacter(
                 maxCombo: engine.maxCombo,
                 didClearAny: engine.didClearAny,
@@ -1450,6 +1455,7 @@ final class GameScene: SKScene {
             badge: badge,
             detail: detail,
             progress: progress,
+            restartText: restartText,
             isDaily: engine.isDailyChallenge,
             size: size,
             metrics: layoutMetrics,
@@ -3787,10 +3793,16 @@ final class GameScene: SKScene {
             enabled: !overlayContinueButton.isHidden && !isPresentingContinue && !isRestarting
         )
         if let restart = overlayNode.childNode(withName: "restart") {
+            let restartLabelText = engine.isDailyChallenge
+                ? VexloStrings.Overlay.dailyReplayForBest
+                : VexloStrings.Overlay.playAgain
+            let restartHint = engine.isDailyChallenge
+                ? VexloStrings.Accessibility.dailyReplayForBestHint
+                : VexloStrings.Accessibility.playAgainHint
             configureAccessibility(
                 restart,
-                label: VexloStrings.Overlay.playAgain,
-                help: VexloStrings.Accessibility.playAgainHint,
+                label: restartLabelText,
+                help: restartHint,
                 enabled: !isRestarting && !isPresentingContinue
             )
         }

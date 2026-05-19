@@ -25,6 +25,10 @@
 "daily.result.recorded" = "Today recorded";
 "daily.continuity" = "Continuity · %d";
 
+"run.complete" = "Run complete";
+"run.reading.chain_led" = "Chain-led reading";
+"run.reading.under_pressure" = "Read under pressure";
+
 "overlay.game_over" = "Game Over";
 "overlay.daily_complete" = "Daily Complete";
 "overlay.game_center" = "Game Center";

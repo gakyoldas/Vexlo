@@ -132,6 +132,12 @@ enum VexloStrings {
         }
     }
 
+    enum RunReading {
+        static let runComplete = localized("run.complete", value: "Run complete")
+        static let chainLedReading = localized("run.reading.chain_led", value: "Chain-led reading")
+        static let readUnderPressure = localized("run.reading.under_pressure", value: "Read under pressure")
+    }
+
     enum Utility {
         static let soundOn = localized("utility.sound_on", value: "Sound On")
         static let soundOff = localized("utility.sound_off", value: "Sound Off")

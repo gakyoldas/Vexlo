@@ -1620,21 +1620,179 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func editorialRunCharacterUsesExistingTerminalSignalsOnly() {
-        #expect(GameScene.editorialRunCharacter(maxCombo: 1, didClearAny: false, hasUsedContinue: false) == "Tight board")
-        #expect(GameScene.editorialRunCharacter(maxCombo: 1, didClearAny: true, hasUsedContinue: false) == "Steady clears")
-        #expect(GameScene.editorialRunCharacter(maxCombo: 2, didClearAny: true, hasUsedContinue: false) == "Chain-led")
-        #expect(GameScene.editorialRunCharacter(maxCombo: 3, didClearAny: true, hasUsedContinue: true) == "Late recovery")
+    func runReadingSummaryUsesDeterministicReadingCharacterPriority() {
+        let base = RunReadingContext(
+            score: 100,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: false,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 4,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: base) == "Tight board")
+
+        var cleared = base
+        cleared = RunReadingContext(
+            score: base.score,
+            best: base.best,
+            runStartBest: base.runStartBest,
+            maxCombo: base.maxCombo,
+            didClearAny: true,
+            hasUsedContinue: base.hasUsedContinue,
+            terminalPressureBand: base.terminalPressureBand,
+            occupiedCellCount: base.occupiedCellCount,
+            completedRuns: base.completedRuns
+        )
+        #expect(RunReadingSummary.readingDetail(for: cleared) == "Steady clears")
+
+        let chainLed = RunReadingContext(
+            score: 120,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 10,
+            completedRuns: 5
+        )
+        #expect(RunReadingSummary.readingDetail(for: chainLed) == "Chain-led reading")
+
+        let underPressure = RunReadingContext(
+            score: 90,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .taut,
+            occupiedCellCount: 15,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: underPressure) == "Read under pressure")
+
+        let lateRecovery = RunReadingContext(
+            score: 80,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 3,
+            didClearAny: true,
+            hasUsedContinue: true,
+            terminalPressureBand: .taut,
+            occupiedCellCount: 16,
+            completedRuns: 2
+        )
+        #expect(RunReadingSummary.readingDetail(for: lateRecovery) == "Late recovery")
     }
 
     @Test
-    func quietNearMissMasteryLineOnlyAppearsForCredibleSmallGapRuns() {
-        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == "One cleaner run was there")
-        #expect(GameScene.quietNearMissMasteryLine(score: 209, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == nil)
-        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 1, didClearAny: true, hasUsedContinue: false) == nil)
-        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: false, hasUsedContinue: false) == nil)
-        #expect(GameScene.quietNearMissMasteryLine(score: 210, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: true) == nil)
-        #expect(GameScene.quietNearMissMasteryLine(score: 240, best: 240, maxCombo: 2, didClearAny: true, hasUsedContinue: false) == nil)
+    func runReadingSummaryProgressUsesSingleMeaningfulLine() {
+        let nearMissContext = RunReadingContext(
+            score: 210,
+            best: 240,
+            runStartBest: 0,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 11,
+            completedRuns: 4
+        )
+        #expect(RunReadingSummary.progressLine(for: nearMissContext, isNewBest: false) == "One cleaner run was there")
+
+        let gapContext = RunReadingContext(
+            score: 210,
+            best: 240,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 6,
+            completedRuns: 4
+        )
+        #expect(RunReadingSummary.progressLine(for: gapContext, isNewBest: false) == "30 to best")
+
+        let runCountContext = RunReadingContext(
+            score: 50,
+            best: 240,
+            runStartBest: 0,
+            maxCombo: 0,
+            didClearAny: false,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 3,
+            completedRuns: 12
+        )
+        #expect(RunReadingSummary.progressLine(for: runCountContext, isNewBest: false) == "Run 12")
+
+        #expect(RunReadingSummary.quietNearMissMasteryLine(
+            score: 209,
+            best: 240,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false
+        ) == nil)
+        #expect(RunReadingSummary.credibleGapToBestLine(
+            score: 210,
+            best: 240,
+            didClearAny: true,
+            hasUsedContinue: true,
+            isNewBest: false
+        ) == nil)
+        #expect(RunReadingSummary.credibleGapToBestLine(
+            score: 0,
+            best: 240,
+            didClearAny: true,
+            hasUsedContinue: false,
+            isNewBest: false
+        ) == nil)
+    }
+
+    @Test
+    func runReadingSummaryMapsNewBestBadgeOnly() {
+        let context = RunReadingContext(
+            score: 250,
+            best: 250,
+            runStartBest: 200,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 9,
+            completedRuns: 3
+        )
+        let summary = RunReadingSummary.summary(context: context)
+        #expect(summary.caption == "Run complete")
+        #expect(summary.badge == "New Best")
+        #expect(summary.readingDetail == "Chain-led reading")
+    }
+
+    @Test
+    func runReadingSummaryLayerStaysReadOnlyPresentation() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let summarySource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/RunReadingSummary.swift"),
+            encoding: .utf8
+        )
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(!summarySource.contains("UserDefaults"))
+        #expect(!summarySource.contains("completeRun"))
+        #expect(!summarySource.contains("PieceFactory"))
+        #expect(!summarySource.contains("registerClear"))
+        #expect(gameSceneSource.contains("RunReadingSummary.summary"))
+        #expect(gameSceneSource.contains("DailyRitualClosure.closure"))
+        #expect(!gameSceneSource.contains("editorialRunCharacter"))
+        #expect(!gameSceneSource.contains("resultDetailLine"))
+        #expect(!gameSceneSource.contains("caption = VexloStrings.Overlay.gameOver"))
     }
 
     @Test

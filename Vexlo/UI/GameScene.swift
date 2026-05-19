@@ -1428,26 +1428,24 @@ final class GameScene: SKScene {
             restartText = ritualClosure.replayLabel
         } else {
             restartText = VexloStrings.Overlay.playAgain
-            let editorialCharacter = Self.editorialRunCharacter(
-                maxCombo: engine.maxCombo,
-                didClearAny: engine.didClearAny,
-                hasUsedContinue: engine.hasUsedContinue
+            let pressureContext = engine.boardPressureContext()
+            let runSummary = RunReadingSummary.summary(
+                context: RunReadingContext(
+                    score: score,
+                    best: engine.scoreEngine.best,
+                    runStartBest: runStartBest,
+                    maxCombo: engine.maxCombo,
+                    didClearAny: engine.didClearAny,
+                    hasUsedContinue: engine.hasUsedContinue,
+                    terminalPressureBand: engine.boardPressureSnapshot().band,
+                    occupiedCellCount: pressureContext.occupiedCellCount,
+                    completedRuns: GameCenterService.shared.completedRunCount
+                )
             )
-            caption = VexloStrings.Overlay.gameOver
-            let completedRuns = GameCenterService.shared.completedRunCount
-            progress = Self.quietNearMissMasteryLine(
-                score: score,
-                best: engine.scoreEngine.best,
-                maxCombo: engine.maxCombo,
-                didClearAny: engine.didClearAny,
-                hasUsedContinue: engine.hasUsedContinue
-            ) ?? (completedRuns > 0 ? VexloStrings.Overlay.runCount(completedRuns) : "")
-            if score >= engine.scoreEngine.best && score > runStartBest {
-                badge = VexloStrings.Overlay.newBest
-            } else {
-                badge = ""
-            }
-            detail = editorialCharacter
+            caption = runSummary.caption
+            badge = runSummary.badge
+            detail = runSummary.readingDetail
+            progress = runSummary.progress
         }
         resultOverlay.applyResultText(
             score: score,
@@ -3356,37 +3354,6 @@ final class GameScene: SKScene {
 
     static func normalOpeningModeLabelText() -> String {
         VexloStrings.HUD.boardReading
-    }
-
-    static func editorialRunCharacter(maxCombo: Int, didClearAny: Bool, hasUsedContinue: Bool) -> String {
-        if hasUsedContinue {
-            return VexloStrings.Overlay.runRecoveredLate
-        }
-        if maxCombo >= 2 {
-            return VexloStrings.Overlay.runChainLed
-        }
-        if didClearAny {
-            return VexloStrings.Overlay.runSteadyClears
-        }
-        return VexloStrings.Overlay.runTightBoard
-    }
-
-    static func quietNearMissMasteryLine(
-        score: Int,
-        best: Int,
-        maxCombo: Int,
-        didClearAny: Bool,
-        hasUsedContinue: Bool
-    ) -> String? {
-        let gap = best - score
-        guard gap > 0,
-              gap <= 30,
-              maxCombo >= 2,
-              didClearAny,
-              !hasUsedContinue else {
-            return nil
-        }
-        return VexloStrings.Overlay.oneCleanerRun
     }
 
     static func shouldShowFirstChainMasteryHint(

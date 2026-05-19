@@ -77,22 +77,50 @@ final class GameEngine: ObservableObject {
     }
 
     func canPlace(_ piece: HexPiece, at anchor: HexCoordinate) -> Bool {
-        piece.offsets.allSatisfy { offset in
-            let coord = HexGeometry.coordinate(for: offset, anchoredAt: anchor)
-            return board.isValid(coord) && board.isEmpty(at: coord)
-        }
+        previewPlacement(piece, at: anchor).isLegal
     }
 
-    func place(_ piece: HexPiece, at anchor: HexCoordinate, slotIndex: Int) {
-        guard canPlace(piece, at: anchor) else { return }
-        piece.offsets.forEach { offset in
-            let coord = HexGeometry.coordinate(for: offset, anchoredAt: anchor)
+    func previewPlacement(_ piece: HexPiece, at anchor: HexCoordinate) -> PlacementResolution {
+        previewPlacementBundle(piece, at: anchor).resolution
+    }
+
+    func placementEvaluationContext() -> PlacementEvaluationContext {
+        PlacementEvaluationContext(
+            occupiedCellCount: occupiedCellCount(),
+            isOpeningState: scoreEngine.score == 0 && !didClearAny
+        )
+    }
+
+    func previewPlacementBundle(_ piece: HexPiece, at anchor: HexCoordinate) -> PlacementPreview {
+        let resolution = board.placementResolution(for: piece, at: anchor)
+        let evaluation = PlacementEvaluation.evaluate(
+            resolution: resolution,
+            context: placementEvaluationContext(),
+            occupiedCoordinates: occupiedCellCoordinates()
+        )
+        return PlacementPreview(resolution: resolution, evaluation: evaluation)
+    }
+
+    func previewPlacementEvaluation(_ piece: HexPiece, at anchor: HexCoordinate) -> PlacementEvaluation? {
+        previewPlacementBundle(piece, at: anchor).evaluation
+    }
+
+    func evaluatePlacement(_ piece: HexPiece, at anchor: HexCoordinate) -> PlacementEvaluation? {
+        previewPlacementBundle(piece, at: anchor).evaluation
+    }
+
+    @discardableResult
+    func place(_ piece: HexPiece, at anchor: HexCoordinate, slotIndex: Int) -> PlacementResolution {
+        let resolution = previewPlacement(piece, at: anchor)
+        guard resolution.isLegal else { return resolution }
+        for coord in resolution.placedCoordinates {
             board.place(color: piece.color, at: coord)
         }
         pieces[slotIndex] = nil
         processClears()
         refillIfNeeded()
         checkGameOver()
+        return resolution
     }
 
     private func processClears() {
@@ -184,6 +212,10 @@ final class GameEngine: ObservableObject {
                 count += 1
             }
         }
+    }
+
+    private func occupiedCellCoordinates() -> Set<HexCoordinate> {
+        Set(board.snapshot.cells.map(\.coordinate))
     }
 
     private func openingBatch(normalSeed: UInt64? = nil) -> [HexPiece] {

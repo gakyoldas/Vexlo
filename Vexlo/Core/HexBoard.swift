@@ -97,4 +97,57 @@ struct HexBoard {
             (0..<rows).map { HexCoordinate(col, $0) }
         }
     }
+
+    /// Hypothetical placement outcome using current row/column clear rules (Phase 0 authority).
+    func placementResolution(for piece: HexPiece, at anchor: HexCoordinate) -> PlacementResolution {
+        let placedCoordinates = piece.offsets
+            .map { HexGeometry.coordinate(for: $0, anchoredAt: anchor) }
+            .sorted {
+                ($0.col, $0.row) < ($1.col, $1.row)
+            }
+        let isLegal = placedCoordinates.allSatisfy { isValid($0) && isEmpty(at: $0) }
+        guard isLegal else {
+            return PlacementResolution(
+                anchor: anchor,
+                placedCoordinates: placedCoordinates,
+                isLegal: false,
+                clearedRowIndices: [],
+                clearedColIndices: [],
+                clearedCellCoordinates: []
+            )
+        }
+
+        let placedSet = Set(placedCoordinates)
+        let isFilled: (HexCoordinate) -> Bool = { coord in
+            !isEmpty(at: coord) || placedSet.contains(coord)
+        }
+        let clearedRowIndices = (0..<rows).filter { row in
+            (0..<cols).allSatisfy { col in
+                isFilled(HexCoordinate(col, row))
+            }
+        }
+        let clearedColIndices = (0..<cols).filter { col in
+            (0..<rows).allSatisfy { row in
+                isFilled(HexCoordinate(col, row))
+            }
+        }
+        let clearedCellCoordinates = Array(
+            Set(
+                coordinatesForRows(clearedRowIndices) +
+                coordinatesForCols(clearedColIndices)
+            )
+        )
+        .sorted {
+            ($0.col, $0.row) < ($1.col, $1.row)
+        }
+
+        return PlacementResolution(
+            anchor: anchor,
+            placedCoordinates: placedCoordinates,
+            isLegal: true,
+            clearedRowIndices: clearedRowIndices,
+            clearedColIndices: clearedColIndices,
+            clearedCellCoordinates: clearedCellCoordinates
+        )
+    }
 }

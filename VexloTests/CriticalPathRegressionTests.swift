@@ -470,6 +470,440 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func illegalPlacementResolutionIsNotLegalAndClearsNothing() {
+        var board = HexBoard(cols: 7, rows: 7)
+        board.place(color: UIColor(hex: "7A74F7"), at: HexCoordinate(0, 0))
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(0, 0))
+
+        #expect(!resolution.isLegal)
+        #expect(resolution.clearedLineCount == 0)
+        #expect(resolution.clearedCellCoordinates.isEmpty)
+        #expect(resolution.placedCoordinates == [HexCoordinate(0, 0)])
+    }
+
+    @Test
+    func legalPlacementResolutionOnEmptyBoardHasNoClears() {
+        let board = HexBoard(cols: 7, rows: 7)
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "7A74F7"))
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(3, 3))
+
+        #expect(resolution.isLegal)
+        #expect(resolution.placedCoordinates == [HexCoordinate(3, 3)])
+        #expect(resolution.clearedLineCount == 0)
+        #expect(resolution.clearedCellCoordinates.isEmpty)
+    }
+
+    @Test
+    func legalPlacementResolutionClearsSingleRow() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(3, 0))
+
+        #expect(resolution.isLegal)
+        #expect(resolution.clearedRowIndices == [0])
+        #expect(resolution.clearedColIndices.isEmpty)
+        #expect(resolution.clearedLineCount == 1)
+        #expect(resolution.clearedCellCoordinates.count == 7)
+        #expect(resolution.clearedCellCoordinates.contains(HexCoordinate(3, 0)))
+    }
+
+    @Test
+    func legalPlacementResolutionClearsRowAndColumnWithOverlap() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 3))
+        }
+        for row in 0..<7 where row != 3 {
+            board.place(color: fill, at: HexCoordinate(3, row))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(3, 3))
+
+        #expect(resolution.isLegal)
+        #expect(resolution.clearedRowIndices == [3])
+        #expect(resolution.clearedColIndices == [3])
+        #expect(resolution.clearedLineCount == 2)
+        #expect(resolution.clearedCellCoordinates.count == 13)
+        #expect(resolution.clearedCellCoordinates.contains(HexCoordinate(3, 3)))
+    }
+
+    @Test
+    func legalPlacementResolutionReportsTwoCompletedRows() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for row in 0..<2 {
+            for col in 0..<6 {
+                board.place(color: fill, at: HexCoordinate(col, row))
+            }
+        }
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(0, 1)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(6, 0))
+
+        #expect(resolution.isLegal)
+        #expect(resolution.placedCoordinates == [HexCoordinate(6, 0), HexCoordinate(6, 1)])
+        #expect(resolution.clearedRowIndices == [0, 1])
+        #expect(resolution.clearedColIndices.isEmpty)
+        #expect(resolution.clearedLineCount == 2)
+    }
+
+    @Test
+    func illegalPlacementEvaluationReturnsNil() {
+        var board = HexBoard(cols: 7, rows: 7)
+        board.place(color: UIColor(hex: "7A74F7"), at: HexCoordinate(0, 0))
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        #expect(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(0, 0)) == nil
+        )
+    }
+
+    @Test
+    func legalNoClearPlacementOnEmptyBoardEvaluatesAsSurvival() throws {
+        let board = HexBoard(cols: 7, rows: 7)
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "7A74F7"))
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(3, 3))
+        )
+        #expect(evaluation.tier == .survival)
+        #expect(evaluation.reliefContactCount == 0)
+        #expect(evaluation.occupiedCellCountBeforePlacement == 0)
+    }
+
+    @Test
+    func singleRowClearEvaluatesAsConstructive() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(3, 0))
+        )
+        #expect(evaluation.tier == .constructive)
+        #expect(evaluation.resolution.clearedLineCount == 1)
+    }
+
+    @Test
+    func rowAndColumnOverlapClearEvaluatesAsExpert() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 3))
+        }
+        for row in 0..<7 where row != 3 {
+            board.place(color: fill, at: HexCoordinate(3, row))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(3, 3))
+        )
+        #expect(evaluation.tier == .expert)
+        #expect(evaluation.resolution.clearedLineCount == 2)
+    }
+
+    @Test
+    func twoRowClearEvaluatesAsExpert() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for row in 0..<2 {
+            for col in 0..<6 {
+                board.place(color: fill, at: HexCoordinate(col, row))
+            }
+        }
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(0, 1)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(6, 0))
+        )
+        #expect(evaluation.tier == .expert)
+        #expect(evaluation.resolution.clearedLineCount == 2)
+    }
+
+    @Test
+    func meaningfulBoardContactWithoutClearEvaluatesAsRelief() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        board.place(color: fill, at: HexCoordinate(2, 1))
+        board.place(color: fill, at: HexCoordinate(3, 1))
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(2, 2))
+        )
+        #expect(evaluation.tier == .relief)
+        #expect(evaluation.reliefContactCount >= PlacementEvaluation.reliefContactThreshold)
+        #expect(evaluation.resolution.clearedLineCount == 0)
+    }
+
+    @Test
+    func highOccupancyIsolatedNoClearEvaluatesAsSurvival() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 {
+            for row in 0..<7 where !(col == 6 && row == 6) {
+                board.place(color: fill, at: HexCoordinate(col, row))
+            }
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(6, 6))
+        )
+        #expect(evaluation.tier == .survival)
+        #expect(evaluation.reliefContactCount < PlacementEvaluation.reliefContactThreshold)
+        #expect(
+            evaluation.occupiedCellCountBeforePlacement >= PlacementEvaluation.survivalOccupancyThreshold
+        )
+    }
+
+    @Test
+    func placementReliefContactCountUsesEngineReliefVectors() {
+        let placement = [HexCoordinate(2, 2), HexCoordinate(3, 2)]
+        let occupied = Set([HexCoordinate(2, 1), HexCoordinate(3, 1)])
+
+        #expect(
+            PlacementEvaluation.reliefContactCount(
+                placementCoordinates: placement,
+                occupiedCoordinates: occupied
+            ) == 2
+        )
+        #expect(
+            PlacementEvaluation.reliefContactCount(
+                placementCoordinates: [HexCoordinate(0, 0)],
+                occupiedCoordinates: Set([HexCoordinate(0, 1)])
+            ) == 1
+        )
+    }
+
+    @Test
+    func gameEnginePreviewPlacementBundleMatchesSeparateResolutionAndEvaluation() throws {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let engine = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        let anchor = HexCoordinate(3, 0)
+
+        let bundle = engine.previewPlacementBundle(piece, at: anchor)
+        #expect(bundle.resolution == engine.previewPlacement(piece, at: anchor))
+        #expect(bundle.evaluation == engine.previewPlacementEvaluation(piece, at: anchor))
+
+        let evaluation = try #require(bundle.evaluation)
+        #expect(evaluation.tier == .constructive)
+        #expect(bundle.resolution.clearedLineCount == 1)
+    }
+
+    @Test
+    func gameEnginePreviewPlacementBundleUsesSingleResolutionForIllegalPlacement() {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: Set(engineOccupiedCoordinates(excluding: [HexCoordinate(0, 0)])),
+            tray: [piece]
+        )
+        let bundle = engine.previewPlacementBundle(piece, at: HexCoordinate(0, 0))
+        #expect(!bundle.resolution.isLegal)
+        #expect(bundle.evaluation == nil)
+        #expect(bundle.resolution == engine.previewPlacement(piece, at: HexCoordinate(0, 0)))
+    }
+
+    @Test
+    func gameEnginePlacementEvaluationContextAtNormalRunStart() {
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        let context = engine.placementEvaluationContext()
+        #expect(context.occupiedCellCount == 0)
+        #expect(context.isOpeningState)
+    }
+
+    @Test
+    func gameEnginePlacementEvaluationContextClearsOpeningStateAfterFirstClear() throws {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: empty,
+            tray: [piece]
+        )
+        #expect(engine.placementEvaluationContext().isOpeningState)
+        _ = engine.place(piece, at: HexCoordinate(3, 0), slotIndex: 0)
+        #expect(!engine.placementEvaluationContext().isOpeningState)
+        #expect(engine.placementEvaluationContext().occupiedCellCount < 49)
+    }
+
+    @Test
+    func gameEnginePreviewPlacementEvaluationMatchesDirectPlacementEvaluationLogic() throws {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let engine = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        let anchor = HexCoordinate(3, 0)
+        let resolution = engine.previewPlacement(piece, at: anchor)
+        let context = engine.placementEvaluationContext()
+        let occupied = Set(engine.board.snapshot.cells.map(\.coordinate))
+        let direct = try #require(
+            PlacementEvaluation.evaluate(
+                resolution: resolution,
+                context: context,
+                occupiedCoordinates: occupied
+            )
+        )
+        let viaEngine = try #require(engine.previewPlacementEvaluation(piece, at: anchor))
+        #expect(viaEngine == direct)
+        #expect(viaEngine.tier == .constructive)
+    }
+
+    @Test
+    func gameEngineEvaluatePlacementMatchesPreviewPlacementEvaluation() throws {
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        let piece = try #require(engine.pieces[0])
+        let anchor = try #require(firstLegalAnchor(for: piece, in: engine))
+        #expect(engine.evaluatePlacement(piece, at: anchor) == engine.previewPlacementEvaluation(piece, at: anchor))
+    }
+
+    @Test
+    func gameEnginePreviewPlacementEvaluationTiersMatchCommit1aGoldens() throws {
+        let singleRowPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var singleRowEmpty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            singleRowEmpty.remove(HexCoordinate(col, 0))
+        }
+        let singleRowEngine = makeEngineForPlacementParity(
+            emptyCoordinates: singleRowEmpty,
+            tray: [singleRowPiece]
+        )
+        let constructive = try #require(
+            singleRowEngine.previewPlacementEvaluation(singleRowPiece, at: HexCoordinate(3, 0))
+        )
+        #expect(constructive.tier == .constructive)
+
+        let expertPiece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(0, 1)],
+            color: UIColor(hex: "55A7F6")
+        )
+        var twoRowEmpty = Set(engineOccupiedCoordinates(excluding: []))
+        for row in 0..<2 {
+            for col in 0..<6 {
+                twoRowEmpty.remove(HexCoordinate(col, row))
+            }
+        }
+        let expertEngine = makeEngineForPlacementParity(
+            emptyCoordinates: twoRowEmpty,
+            tray: [expertPiece]
+        )
+        let expert = try #require(
+            expertEngine.previewPlacementEvaluation(expertPiece, at: HexCoordinate(6, 0))
+        )
+        #expect(expert.tier == .expert)
+
+        let reliefPiece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        var reliefEmpty = Set(
+            (0..<7).flatMap { col in
+                (0..<7).map { HexCoordinate(col, $0) }
+            }
+        )
+        reliefEmpty.remove(HexCoordinate(2, 1))
+        reliefEmpty.remove(HexCoordinate(3, 1))
+        let reliefEngine = makeEngineForPlacementParity(
+            emptyCoordinates: reliefEmpty,
+            tray: [reliefPiece]
+        )
+        let relief = try #require(
+            reliefEngine.previewPlacementEvaluation(reliefPiece, at: HexCoordinate(2, 2))
+        )
+        #expect(relief.tier == .relief)
+
+        let survivalEngine = GameEngine()
+        survivalEngine.startNormalRun(seed: 0xBEEF)
+        let survivalPiece = try #require(survivalEngine.pieces[0])
+        let survivalAnchor = try #require(firstLegalAnchor(for: survivalPiece, in: survivalEngine))
+        let survival = try #require(
+            survivalEngine.previewPlacementEvaluation(survivalPiece, at: survivalAnchor)
+        )
+        #expect(survival.tier == .survival)
+    }
+
+    @Test
+    func enginePreviewPlacementMatchesCommittedOutcomeForIllegalPlacement() {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: Set(engineOccupiedCoordinates(excluding: [HexCoordinate(0, 0)])),
+            tray: [piece]
+        )
+        expectEnginePreviewMatchesCommitted(engine, piece: piece, anchor: HexCoordinate(0, 0), slotIndex: 0)
+    }
+
+    @Test
+    func enginePreviewPlacementMatchesCommittedOutcomeForLegalNoClear() throws {
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        let piece = try #require(engine.pieces[0])
+        let anchor = try #require(firstLegalAnchor(for: piece, in: engine))
+        expectEnginePreviewMatchesCommitted(engine, piece: piece, anchor: anchor, slotIndex: 0)
+    }
+
+    @Test
+    func enginePreviewPlacementMatchesCommittedOutcomeForSingleRowClear() {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let engine = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        expectEnginePreviewMatchesCommitted(engine, piece: piece, anchor: HexCoordinate(3, 0), slotIndex: 0)
+    }
+
+    @Test
+    func enginePreviewPlacementMatchesCommittedOutcomeForRowAndColumnOverlapClear() {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 3))
+        }
+        for row in 0..<7 where row != 3 {
+            empty.remove(HexCoordinate(3, row))
+        }
+        let engine = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        expectEnginePreviewMatchesCommitted(engine, piece: piece, anchor: HexCoordinate(3, 3), slotIndex: 0)
+    }
+
+    @Test
+    func enginePreviewPlacementMatchesCommittedOutcomeForTwoRowClear() {
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(0, 1)],
+            color: UIColor(hex: "55A7F6")
+        )
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for row in 0..<2 {
+            for col in 0..<6 {
+                empty.remove(HexCoordinate(col, row))
+            }
+        }
+        let engine = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        expectEnginePreviewMatchesCommitted(engine, piece: piece, anchor: HexCoordinate(6, 0), slotIndex: 0)
+    }
+
+    @Test
     func dragPreviewProfilesDistinguishValidClearAndMultiClearPlacements() {
         #expect(GameScene.dragPreviewProfile(isValid: false, clearedLineCount: 0) == .invalidPlacement)
         #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 0) == .validPlacement)
@@ -478,34 +912,90 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func openingReliefPreviewEmphasisOnlyArmsForOpeningValidPlacementsWithMeaningfulBoardContact() {
-        let placement = [HexCoordinate(2, 2), HexCoordinate(3, 2)]
-        let occupied = Set([HexCoordinate(2, 1), HexCoordinate(3, 1)])
+    func dragPreviewProfileDerivesFromPlacementResolution() {
+        let illegal = PlacementResolution(
+            anchor: HexCoordinate(0, 0),
+            placedCoordinates: [HexCoordinate(0, 0)],
+            isLegal: false,
+            clearedRowIndices: [],
+            clearedColIndices: [],
+            clearedCellCoordinates: []
+        )
+        let multiClear = PlacementResolution(
+            anchor: HexCoordinate(3, 3),
+            placedCoordinates: [HexCoordinate(3, 3)],
+            isLegal: true,
+            clearedRowIndices: [3],
+            clearedColIndices: [3],
+            clearedCellCoordinates: [HexCoordinate(3, 3)]
+        )
+        #expect(GameScene.dragPreviewProfile(for: illegal) == .invalidPlacement)
+        #expect(GameScene.dragPreviewProfile(for: multiClear) == .multiClearPlacement)
+    }
 
-        #expect(GameScene.openingReliefContactScore(placementCoordinates: placement, occupiedCoordinates: occupied) == 2)
+    @Test
+    func gameSceneDoesNotDuplicateRowColClearPrediction() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        let previewSemanticsSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+PreviewSemantics.swift"),
+            encoding: .utf8
+        )
+        #expect(!gameSceneSource.contains("func predictedClearCoordinates"))
+        #expect(!gameSceneSource.contains("func predictedClearLineCount"))
+        #expect(gameSceneSource.contains("engine.previewPlacement"))
+        #expect(gameSceneSource.contains("engine.previewPlacementBundle"))
+        #expect(gameSceneSource.contains("engine.place(piece"))
+        #expect(gameSceneSource.contains("highlightCells(resolution:"))
+        #expect(!previewSemanticsSource.contains("openingReliefContactScore"))
+        #expect(!previewSemanticsSource.contains("openingNeighborCoordinates"))
+    }
+
+    @Test
+    func openingReliefPreviewEmphasisOnlyArmsForOpeningValidPlacementsWithMeaningfulBoardContact() throws {
+        var reliefBoard = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        reliefBoard.place(color: fill, at: HexCoordinate(2, 1))
+        reliefBoard.place(color: fill, at: HexCoordinate(3, 1))
+        let reliefPiece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let reliefEvaluation = try #require(
+            placementEvaluation(on: reliefBoard, piece: reliefPiece, anchor: HexCoordinate(2, 2))
+        )
+        #expect(reliefEvaluation.tier == .relief)
         #expect(GameScene.shouldEmphasizeOpeningReliefPlacement(
-            isOpeningState: true,
+            evaluation: reliefEvaluation,
             previewProfile: .validPlacement,
-            placementCoordinates: placement,
-            occupiedCoordinates: occupied
+            isOpeningState: true
         ))
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            isOpeningState: false,
+            evaluation: reliefEvaluation,
             previewProfile: .validPlacement,
-            placementCoordinates: placement,
-            occupiedCoordinates: occupied
+            isOpeningState: false
         ))
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            isOpeningState: true,
+            evaluation: reliefEvaluation,
             previewProfile: .clearPlacement,
-            placementCoordinates: placement,
-            occupiedCoordinates: occupied
+            isOpeningState: true
         ))
+
+        let sparseBoard = HexBoard(cols: 7, rows: 7)
+        let sparsePiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let sparseEvaluation = try #require(
+            placementEvaluation(on: sparseBoard, piece: sparsePiece, anchor: HexCoordinate(3, 3))
+        )
+        #expect(sparseEvaluation.tier == .survival)
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            isOpeningState: true,
+            evaluation: sparseEvaluation,
             previewProfile: .validPlacement,
-            placementCoordinates: [HexCoordinate(0, 0)],
-            occupiedCoordinates: Set([HexCoordinate(0, 1)])
+            isOpeningState: true
         ))
     }
 
@@ -1068,6 +1558,65 @@ struct MonetizationOfferLifecycleRegressionTests {
         #expect(afterContinueResetMonetization.continueOfferCount == 0)
         #expect(analyticsAfterContinueReset.continueUsedCount == analyticsAfterContinue.continueUsedCount)
         #expect(analyticsAfterContinueReset.rerollUsedCount == analyticsAfterContinue.rerollUsedCount)
+    }
+}
+
+private func placementEvaluation(
+    on board: HexBoard,
+    piece: HexPiece,
+    anchor: HexCoordinate,
+    isOpeningState: Bool = false
+) -> PlacementEvaluation? {
+    let occupied = Set(board.snapshot.cells.map(\.coordinate))
+    let resolution = board.placementResolution(for: piece, at: anchor)
+    let context = PlacementEvaluationContext(
+        occupiedCellCount: occupied.count,
+        isOpeningState: isOpeningState
+    )
+    return PlacementEvaluation.evaluate(
+        resolution: resolution,
+        context: context,
+        occupiedCoordinates: occupied
+    )
+}
+
+private func engineOccupiedCoordinates(excluding empty: [HexCoordinate]) -> [HexCoordinate] {
+    let emptySet = Set(empty)
+    return (0..<7).flatMap { col in
+        (0..<7).map { HexCoordinate(col, $0) }
+    }.filter { !emptySet.contains($0) }
+}
+
+private func makeEngineForPlacementParity(
+    emptyCoordinates: Set<HexCoordinate>,
+    tray: [HexPiece]
+) -> GameEngine {
+    let engine = GameEngine()
+    engine.loadCaptureTerminalState(
+        mode: .normal,
+        emptyCoordinates: emptyCoordinates,
+        tray: tray,
+        score: 0,
+        best: 0,
+        combo: 0,
+        didClearAny: false,
+        maxCombo: 0
+    )
+    return engine
+}
+
+private func expectEnginePreviewMatchesCommitted(
+    _ engine: GameEngine,
+    piece: HexPiece,
+    anchor: HexCoordinate,
+    slotIndex: Int
+) {
+    let boardBefore = engine.board.snapshot
+    let preview = engine.previewPlacement(piece, at: anchor)
+    let committed = engine.place(piece, at: anchor, slotIndex: slotIndex)
+    #expect(preview == committed)
+    if !preview.isLegal {
+        #expect(boardSignature(engine.board.snapshot) == boardSignature(boardBefore))
     }
 }
 

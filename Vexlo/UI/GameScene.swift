@@ -2446,45 +2446,6 @@ final class GameScene: SKScene {
         }
     }
 
-    private func predictedClearCoordinates(for piece: HexPiece, at anchor: HexCoordinate) -> [HexCoordinate] {
-        let placed = Set(piece.offsets.map { HexGeometry.coordinate(for: $0, anchoredAt: anchor) })
-        let filled: (HexCoordinate) -> Bool = { coord in
-            placed.contains(coord) || self.engine.board.color(at: coord) != nil
-        }
-        let clearedRows = (0..<rows).filter { row in
-            (0..<cols).allSatisfy { col in
-                filled(HexCoordinate(col, row))
-            }
-        }
-        let clearedCols = (0..<cols).filter { col in
-            (0..<rows).allSatisfy { row in
-                filled(HexCoordinate(col, row))
-            }
-        }
-        return Array(Set(
-            engine.board.coordinatesForRows(clearedRows) +
-            engine.board.coordinatesForCols(clearedCols)
-        ))
-    }
-
-    private func predictedClearLineCount(for piece: HexPiece, at anchor: HexCoordinate) -> Int {
-        let placed = Set(piece.offsets.map { HexGeometry.coordinate(for: $0, anchoredAt: anchor) })
-        let filled: (HexCoordinate) -> Bool = { coord in
-            placed.contains(coord) || self.engine.board.color(at: coord) != nil
-        }
-        let clearedRows = (0..<rows).filter { row in
-            (0..<cols).allSatisfy { col in
-                filled(HexCoordinate(col, row))
-            }
-        }
-        let clearedCols = (0..<cols).filter { col in
-            (0..<rows).allSatisfy { row in
-                filled(HexCoordinate(col, row))
-            }
-        }
-        return clearedRows.count + clearedCols.count
-    }
-
     private func handleOverlayTouch(at point: CGPoint) -> Bool {
         guard !overlayNode.isHidden else { return false }
         guard !isRestarting, !isPresentingContinue, !isPresentingSupporterPurchase else { return true }
@@ -2603,22 +2564,11 @@ final class GameScene: SKScene {
         ) {
             dragAnchor = anchor
             dragNode?.position = anchorScenePosition(anchor)
-            let coords = piece.offsets.map {
-                HexGeometry.coordinate(for: $0, anchoredAt: anchor)
-            }
-            let valid = coords.allSatisfy { engine.board.isValid($0) }
-                && engine.canPlace(piece, at: anchor)
-            guard anchor != lastDragHighlightAnchor || valid != lastDragHighlightValid else { return }
+            let preview = engine.previewPlacementBundle(piece, at: anchor)
+            guard anchor != lastDragHighlightAnchor || preview.resolution.isLegal != lastDragHighlightValid else { return }
             lastDragHighlightAnchor = anchor
-            lastDragHighlightValid = valid
-            let clearedCoords = valid ? predictedClearCoordinates(for: piece, at: anchor) : []
-            let clearedLineCount = valid ? predictedClearLineCount(for: piece, at: anchor) : 0
-            highlightCells(
-                coords,
-                valid: valid,
-                clearedCoords: clearedCoords,
-                clearedLineCount: clearedLineCount
-            )
+            lastDragHighlightValid = preview.resolution.isLegal
+            highlightCells(resolution: preview.resolution, evaluation: preview.evaluation)
         } else {
             dragAnchor = nil
             dragNode?.position = point
@@ -2647,11 +2597,8 @@ final class GameScene: SKScene {
             syncTray()
             return
         }
-        let coords = piece.offsets.map {
-            HexGeometry.coordinate(for: $0, anchoredAt: anchor)
-        }
-        guard coords.allSatisfy({ engine.board.isValid($0) }),
-              engine.canPlace(piece, at: anchor) else {
+        let preview = engine.previewPlacement(piece, at: anchor)
+        guard preview.isLegal else {
             HapticsService.shared.playInvalid()
             AudioService.shared.play(.invalidPlace)
             syncTray()
@@ -2659,20 +2606,18 @@ final class GameScene: SKScene {
         }
         let prevScore = engine.scoreEngine.score
         let prevCombo = engine.scoreEngine.combo
-        let allCleared = predictedClearCoordinates(for: piece, at: anchor)
-        let clearedLineCount = predictedClearLineCount(for: piece, at: anchor)
+        let committed = engine.place(piece, at: anchor, slotIndex: dragSlotIndex)
 
-        engine.place(piece, at: anchor, slotIndex: dragSlotIndex)
         OnboardingService.shared.markPlacementLearned()
         HapticsService.shared.playPlace()
         AudioService.shared.play(.validPlace)
         handlePostPlacementFeedback(
-            placedCoords: coords,
+            placedCoords: committed.placedCoordinates,
             pieceColor: piece.color,
             previousScore: prevScore,
             previousCombo: prevCombo,
-            clearedCoords: allCleared,
-            clearedLineCount: clearedLineCount
+            clearedCoords: committed.clearedCellCoordinates,
+            clearedLineCount: committed.clearedLineCount
         )
     }
 
@@ -2689,12 +2634,8 @@ final class GameScene: SKScene {
         syncOnboardingSurface()
     }
 
-    private func highlightCells(
-        _ coords: [HexCoordinate],
-        valid: Bool,
-        clearedCoords: [HexCoordinate] = [],
-        clearedLineCount: Int = 0
-    ) {
+    private func highlightCells(resolution: PlacementResolution, evaluation: PlacementEvaluation?) {
+        let coords = resolution.placedCoordinates
         guard coords.allSatisfy({ engine.board.isValid($0) }) else {
             for coord in dragHighlightedCells {
                 restoreBoardCell(at: coord)
@@ -2702,16 +2643,13 @@ final class GameScene: SKScene {
             dragHighlightedCells.removeAll()
             return
         }
-        let previewProfile = Self.dragPreviewProfile(isValid: valid, clearedLineCount: clearedLineCount)
-        let isOpeningState = engine.scoreEngine.score == 0 && !engine.didClearAny
-        let occupiedCoordinates = Set(engine.board.snapshot.cells.map(\.coordinate))
+        let previewProfile = Self.dragPreviewProfile(for: resolution)
         let emphasizesOpeningRelief = Self.shouldEmphasizeOpeningReliefPlacement(
-            isOpeningState: isOpeningState,
+            evaluation: evaluation,
             previewProfile: previewProfile,
-            placementCoordinates: coords,
-            occupiedCoordinates: occupiedCoordinates
+            isOpeningState: engine.placementEvaluationContext().isOpeningState
         )
-        let clearCells = Set(clearedCoords)
+        let clearCells = Set(resolution.clearedCellCoordinates)
         let nextCells = Set(coords).union(clearCells)
         for coord in dragHighlightedCells.subtracting(nextCells) {
             restoreBoardCell(at: coord)

@@ -14,6 +14,8 @@
 "daily.character.spacious" = "Spacious";
 "daily.character.balanced" = "Balanced";
 "daily.character.focused" = "Focused";
+"daily.arrival" = "Today's board";
+"daily.arrival_weekday_board" = "%@ board";
 "daily.headline.weekday_character_board" = "%@ · %@ Board";
 "daily.headline.character_board" = "%@ Board";
 "daily.result.detail" = "%@ read";

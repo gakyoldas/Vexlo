@@ -106,6 +106,23 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func dailyBeginSceneRunMarksArrivalPresentedForDay() throws {
+        clearSharedResumeState()
+        UserDefaults.standard.removeObject(forKey: "nf_vexlo_daily_arrival_presented_day_id")
+        defer {
+            UserDefaults.standard.removeObject(forKey: "nf_vexlo_daily_arrival_presented_day_id")
+            clearSharedResumeState()
+        }
+
+        let dayID = "2025-01-15"
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+
+        #expect(scene.testingPresentedDailyArrivalDayID == dayID)
+    }
+
+    @Test
     func dailySceneStartUsesMappedBoardCharacter() throws {
         clearSharedResumeState()
         defer { clearSharedResumeState() }
@@ -176,6 +193,7 @@ struct CriticalPathRegressionTests {
         )
         #expect(wednesdayIdentity.weekdayTitle == "Wednesday")
         #expect(wednesdayIdentity.tone == jan15Tone)
+        #expect(wednesdayIdentity.arrivalLine == "Wednesday board")
         #expect(wednesdayIdentity.ritualHeadline == "Wednesday · \(wednesdayIdentity.characterName) Board")
         #expect(wednesdayIdentity.resultDetailLine == "\(wednesdayIdentity.characterName) read")
         #expect(wednesdayIdentity.continuityLine(streakCount: 3) == "Continuity · 3")
@@ -184,6 +202,55 @@ struct CriticalPathRegressionTests {
             weekdayTitle: "Wednesday",
             tone: jan15Tone
         ) == wednesdayIdentity)
+    }
+
+    @Test
+    func dailyArrivalBeatShowsOncePerCalendarDay() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        let arrival = DailyArrivalRitualService(defaults: defaults)
+        let dayID = "2025-01-15"
+
+        #expect(arrival.shouldPresentArrival(for: dayID))
+        arrival.markArrivalPresented(for: dayID)
+        #expect(!arrival.shouldPresentArrival(for: dayID))
+        #expect(arrival.presentedArrivalDayID() == dayID)
+        #expect(arrival.shouldPresentArrival(for: "2025-01-16"))
+    }
+
+    @Test
+    func dailyArrivalIdentityArrivalLineUsesWeekdayBeforeFullHeadline() {
+        let identity = DailyRitualIdentity.identity(
+            for: "2025-01-15",
+            weekdayTitle: "Wednesday",
+            tone: .iris
+        )
+        #expect(identity.arrivalLine == "Wednesday board")
+        #expect(identity.ritualHeadline == "Wednesday · Focused Board")
+        #expect(VexloStrings.DailyRitual.arrivalLine(weekday: "") == "Today's board")
+    }
+
+    @Test
+    func dailyArrivalRitualDoesNotMutateDailyChallengeProgress() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let service = DailyChallengeService(defaults: defaults, calendar: calendar)
+        let arrival = DailyArrivalRitualService(defaults: defaults)
+        let dayID = "2025-01-15"
+
+        let beforeBest = service.bestScore(for: dayID)
+        let beforeStreak = service.status(for: dayID).streakCount
+
+        arrival.markArrivalPresented(for: dayID)
+
+        #expect(service.bestScore(for: dayID) == beforeBest)
+        #expect(service.status(for: dayID).streakCount == beforeStreak)
+        #expect(service.seed(for: dayID) == DailyChallengeService.shared.seed(for: dayID))
+        #expect(service.toneVariant(for: dayID) == service.toneVariant(for: dayID))
     }
 
     @Test
@@ -245,6 +312,31 @@ struct CriticalPathRegressionTests {
         #expect(gameSceneSource.contains("ritualIdentity.ritualHeadline"))
         #expect(gameSceneSource.contains("continuityLine(streakCount:"))
         #expect(!gameSceneSource.contains("VexloStrings.Overlay.streak"))
+    }
+
+    @Test
+    func dailyArrivalBeatUsesSceneStartPathOnly() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        let arrivalServiceSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/DailyArrivalRitualService.swift"),
+            encoding: .utf8
+        )
+        #expect(gameSceneSource.contains("presentDailyArrivalBeatIfNeeded()"))
+        #expect(gameSceneSource.contains("DailyArrivalRitualService.shared.shouldPresentArrival"))
+        #expect(gameSceneSource.contains("identity.arrivalLine"))
+        #expect(gameSceneSource.contains("isPresentingDailyArrivalBeat"))
+        #expect(gameSceneSource.contains("syncAll()\n        presentDailyArrivalBeatIfNeeded()"))
+        #expect(gameSceneSource.components(separatedBy: "presentDailyArrivalBeatIfNeeded").count == 3)
+        #expect(!arrivalServiceSource.contains("completeRun"))
+        #expect(!arrivalServiceSource.contains("seed(for:"))
+        #expect(!arrivalServiceSource.contains("toneVariant"))
+        #expect(!arrivalServiceSource.contains("PieceFactory"))
     }
 
     @Test

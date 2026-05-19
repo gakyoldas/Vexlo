@@ -63,6 +63,7 @@ final class GameScene: SKScene {
     private var appliedCaptureSignature: String?
     var hasAttemptedPersistedRestore = false
     private var isShowingTransientOnboardingHint = false
+    private var isPresentingDailyArrivalBeat = false
     private var hasShownChainMasteryHint = false
 
     private let cols = 7
@@ -1695,6 +1696,8 @@ final class GameScene: SKScene {
         utilityExportLabel.removeAllActions()
         utilityNewRunLabel.removeAllActions()
         utilityStudioLabel.removeAllActions()
+        modeLabel.removeAllActions()
+        isPresentingDailyArrivalBeat = false
         hasRecordedContinueOfferForCurrentLoss = false
         for node in cellNodes.values {
             node.removeAllActions()
@@ -2029,6 +2032,9 @@ final class GameScene: SKScene {
         }
         modeLabel.isHidden = false
         if engine.isDailyChallenge {
+            if isPresentingDailyArrivalBeat {
+                return
+            }
             let status = DailyChallengeService.shared.currentStatus()
             let ritualIdentity = DailyRitualIdentity.identity(for: status.dayID)
             if LaunchSupport.shared.isCaptureMode {
@@ -2236,6 +2242,58 @@ final class GameScene: SKScene {
             AnalyticsService.shared.beginRun(mode: engine.isDailyChallenge ? .daily : .normal)
         }
         syncAll()
+        presentDailyArrivalBeatIfNeeded()
+    }
+
+    private func presentDailyArrivalBeatIfNeeded() {
+        guard engine.isDailyChallenge,
+              !LaunchSupport.shared.isCaptureMode,
+              !terminalOverlayOwnsResultContext else { return }
+        let dayID = engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
+        guard engine.scoreEngine.score == 0, !engine.didClearAny else { return }
+        guard DailyArrivalRitualService.shared.shouldPresentArrival(for: dayID) else { return }
+
+        let identity = DailyRitualIdentity.identity(for: dayID)
+        DailyArrivalRitualService.shared.markArrivalPresented(for: dayID)
+
+        isPresentingDailyArrivalBeat = true
+        let beatEpoch = flowEpoch
+        let arrivalText = identity.arrivalLine
+        let steadyHeadline = identity.ritualHeadline
+        let steadyAlpha: CGFloat = 0.6
+
+        modeLabel.removeAllActions()
+        modeLabel.isHidden = false
+        modeLabel.text = arrivalText
+        modeLabel.alpha = prefersReducedMotion ? 0.56 : 0.44
+        fitLabelWidth(modeLabel, maxWidth: size.width * 0.48, minimumScale: 0.78)
+
+        let settle: () -> Void = { [weak self] in
+            guard let self, beatEpoch == self.flowEpoch else { return }
+            self.isPresentingDailyArrivalBeat = false
+            self.modeLabel.text = steadyHeadline
+            self.modeLabel.alpha = steadyAlpha
+            self.fitLabelWidth(self.modeLabel, maxWidth: self.size.width * 0.48, minimumScale: 0.78)
+        }
+
+        if prefersReducedMotion {
+            modeLabel.run(.sequence([
+                .wait(forDuration: 0.82),
+                .run { settle() }
+            ]))
+            return
+        }
+
+        modeLabel.run(.sequence([
+            .fadeAlpha(to: 0.56, duration: 0.26),
+            .wait(forDuration: 0.68),
+            .run { [weak self] in
+                guard let self, beatEpoch == self.flowEpoch else { return }
+                self.modeLabel.text = steadyHeadline
+            },
+            .fadeAlpha(to: steadyAlpha, duration: 0.3),
+            .run { settle() }
+        ]))
     }
 
     private func playOverlayResultAudioIfNeeded() {

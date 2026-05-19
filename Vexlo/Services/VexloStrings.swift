@@ -40,6 +40,16 @@ enum VexloStrings {
             }
         }
 
+        static func arrivalLine(weekday: String) -> String {
+            if weekday.isEmpty {
+                return localized("daily.arrival", value: "Today's board")
+            }
+            return String(
+                format: localized("daily.arrival_weekday_board", value: "%@ board"),
+                weekday
+            )
+        }
+
         static func ritualHeadline(weekday: String, characterName: String) -> String {
             if weekday.isEmpty {
                 return String(

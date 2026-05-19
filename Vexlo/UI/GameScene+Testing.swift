@@ -69,6 +69,10 @@ extension GameScene {
         beginSceneRun(mode: mode)
     }
 
+    var testingPresentedDailyArrivalDayID: String? {
+        DailyArrivalRitualService.shared.presentedArrivalDayID()
+    }
+
     func testingRestoreLiveRun(from snapshot: GameEngine.LiveRunSnapshot) {
         restoreLiveRun(from: snapshot)
     }

@@ -8,6 +8,7 @@ struct DailyRitualIdentity: Equatable {
     let tone: DailyToneVariant
     let characterName: String
     let ritualHeadline: String
+    let arrivalLine: String
     let resultDetailLine: String
 
     static func identity(for dayID: String) -> DailyRitualIdentity {
@@ -33,6 +34,7 @@ struct DailyRitualIdentity: Equatable {
                 weekday: weekdayTitle,
                 characterName: characterName
             ),
+            arrivalLine: VexloStrings.DailyRitual.arrivalLine(weekday: weekdayTitle),
             resultDetailLine: VexloStrings.DailyRitual.resultDetail(characterName: characterName)
         )
     }

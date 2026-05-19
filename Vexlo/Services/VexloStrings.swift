@@ -28,6 +28,41 @@ enum VexloStrings {
         }
     }
 
+    enum DailyRitual {
+        static func characterName(for tone: DailyToneVariant) -> String {
+            switch tone {
+            case .glacial:
+                return localized("daily.character.spacious", value: "Spacious")
+            case .lucid:
+                return localized("daily.character.balanced", value: "Balanced")
+            case .iris:
+                return localized("daily.character.focused", value: "Focused")
+            }
+        }
+
+        static func ritualHeadline(weekday: String, characterName: String) -> String {
+            if weekday.isEmpty {
+                return String(
+                    format: localized("daily.headline.character_board", value: "%@ Board"),
+                    characterName
+                )
+            }
+            return String(
+                format: localized("daily.headline.weekday_character_board", value: "%@ · %@ Board"),
+                weekday,
+                characterName
+            )
+        }
+
+        static func resultDetail(characterName: String) -> String {
+            String(format: localized("daily.result.detail", value: "%@ read"), characterName)
+        }
+
+        static func continuity(days: Int) -> String {
+            String(format: localized("daily.continuity", value: "Continuity · %d"), days)
+        }
+    }
+
     enum Overlay {
         static let gameOver = localized("overlay.game_over", value: "Game Over")
         static let dailyComplete = localized("overlay.daily_complete", value: "Daily Complete")

@@ -11,6 +11,21 @@ struct ResultSharePayload {
     let score: Int
     let badge: String?
     let detail: String?
+    let dailyRitualHeadline: String?
+
+    init(
+        mode: Mode,
+        score: Int,
+        badge: String?,
+        detail: String?,
+        dailyRitualHeadline: String? = nil
+    ) {
+        self.mode = mode
+        self.score = score
+        self.badge = badge
+        self.detail = detail
+        self.dailyRitualHeadline = dailyRitualHeadline
+    }
 }
 
 enum ResultShareService {
@@ -20,8 +35,15 @@ enum ResultShareService {
 
     private static func summaryText(for payload: ResultSharePayload) -> String {
         let mode = payload.mode == .daily ? "Today's Challenge" : "Main Run"
+        let headline = payload.dailyRitualHeadline
         if let badge = payload.badge, !badge.isEmpty {
+            if let headline, !headline.isEmpty {
+                return "VEXLO - \(mode) - \(headline) - \(payload.score) - \(badge)"
+            }
             return "VEXLO - \(mode) - \(payload.score) - \(badge)"
+        }
+        if let headline, !headline.isEmpty {
+            return "VEXLO - \(mode) - \(headline) - \(payload.score)"
         }
         return "VEXLO - \(mode) - \(payload.score)"
     }
@@ -133,7 +155,12 @@ enum ResultShareService {
     }
 
     private static func shareModeTitle(for payload: ResultSharePayload) -> String {
-        guard payload.mode == .normal else { return "TODAY'S CHALLENGE" }
+        if payload.mode == .daily {
+            if let headline = payload.dailyRitualHeadline, !headline.isEmpty {
+                return headline
+            }
+            return "TODAY'S CHALLENGE"
+        }
         let completedRuns = GameCenterService.shared.completedRunCount
         guard completedRuns > 0 else { return "MAIN RUN" }
         return "MAIN RUN • RUN \(completedRuns)"

@@ -168,6 +168,83 @@ struct CriticalPathRegressionTests {
         #expect(VexloStrings.HUD.todaysBoard(weekday: "Wednesday") == "Today's Board • Wednesday")
         #expect(VexloStrings.HUD.dailyBoard(weekday: "Wednesday") == "Wednesday Board")
         #expect(GameScene.normalOpeningModeLabelText() == "Board reading")
+
+        let wednesdayIdentity = DailyRitualIdentity.identity(
+            for: "2025-01-15",
+            weekdayTitle: "Wednesday",
+            tone: jan15Tone
+        )
+        #expect(wednesdayIdentity.weekdayTitle == "Wednesday")
+        #expect(wednesdayIdentity.tone == jan15Tone)
+        #expect(wednesdayIdentity.ritualHeadline == "Wednesday · \(wednesdayIdentity.characterName) Board")
+        #expect(wednesdayIdentity.resultDetailLine == "\(wednesdayIdentity.characterName) read")
+        #expect(wednesdayIdentity.continuityLine(streakCount: 3) == "Continuity · 3")
+        #expect(DailyRitualIdentity.identity(
+            for: "2025-01-15",
+            weekdayTitle: "Wednesday",
+            tone: jan15Tone
+        ) == wednesdayIdentity)
+    }
+
+    @Test
+    func dailyRitualIdentityMapsToneToEditorialCharacterNames() {
+        #expect(VexloStrings.DailyRitual.characterName(for: .glacial) == "Spacious")
+        #expect(VexloStrings.DailyRitual.characterName(for: .lucid) == "Balanced")
+        #expect(VexloStrings.DailyRitual.characterName(for: .iris) == "Focused")
+    }
+
+    @Test
+    func dailyRitualIdentityDoesNotMutateDailyChallengeState() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let service = DailyChallengeService(defaults: defaults, calendar: calendar)
+        let dayID = "2025-01-15"
+        let before = (
+            bestDay: defaults.string(forKey: ICloudProgressSyncService.Keys.dailyBestDayID),
+            bestScore: defaults.integer(forKey: ICloudProgressSyncService.Keys.dailyBestScore),
+            completedDay: defaults.string(forKey: ICloudProgressSyncService.Keys.dailyCompletedDayID),
+            streak: defaults.integer(forKey: ICloudProgressSyncService.Keys.dailyStreakCount),
+            lastStreakDay: defaults.string(forKey: ICloudProgressSyncService.Keys.dailyLastStreakDayID)
+        )
+
+        _ = DailyRitualIdentity.identity(
+            for: dayID,
+            weekdayTitle: service.weekdayTitle(for: dayID),
+            tone: service.toneVariant(for: dayID)
+        )
+        _ = DailyRitualIdentity.identity(for: dayID)
+
+        #expect(defaults.string(forKey: ICloudProgressSyncService.Keys.dailyBestDayID) == before.bestDay)
+        #expect(defaults.integer(forKey: ICloudProgressSyncService.Keys.dailyBestScore) == before.bestScore)
+        #expect(defaults.string(forKey: ICloudProgressSyncService.Keys.dailyCompletedDayID) == before.completedDay)
+        #expect(defaults.integer(forKey: ICloudProgressSyncService.Keys.dailyStreakCount) == before.streak)
+        #expect(defaults.string(forKey: ICloudProgressSyncService.Keys.dailyLastStreakDayID) == before.lastStreakDay)
+    }
+
+    @Test
+    func dailyRitualIdentityLayerStaysReadOnlyPresentation() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let identitySource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/DailyRitualIdentity.swift"),
+            encoding: .utf8
+        )
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(!identitySource.contains("UserDefaults"))
+        #expect(!identitySource.contains("completeRun"))
+        #expect(!identitySource.contains("PieceFactory"))
+        #expect(identitySource.contains("toneVariant(for:"))
+        #expect(gameSceneSource.contains("DailyRitualIdentity.identity"))
+        #expect(gameSceneSource.contains("ritualIdentity.ritualHeadline"))
+        #expect(gameSceneSource.contains("continuityLine(streakCount:"))
+        #expect(!gameSceneSource.contains("VexloStrings.Overlay.streak"))
     }
 
     @Test
@@ -669,6 +746,120 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func emptyBoardEvaluatesAsCalmPressure() {
+        let board = HexBoard(cols: 7, rows: 7)
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+
+        #expect(snapshot.band == .calm)
+        #expect(snapshot.cellWhisper.count == 49)
+        #expect(snapshot.cellWhisper.values.allSatisfy { $0 == .calm })
+    }
+
+    @Test
+    func openingStateSuppressesWarmLinePressureToCalm() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<6 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+
+        let snapshot = boardPressure(on: board, isOpeningState: true)
+        #expect(snapshot.band == .calm)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .calm)
+        #expect(snapshot.cellWhisper.values.allSatisfy { $0 == .calm })
+    }
+
+    @Test
+    func hotRowMarksRemainingEmptyCellsTaut() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<6 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .taut)
+    }
+
+    @Test
+    func hotColMarksRemainingEmptyCellsTaut() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for row in 0..<6 {
+            board.place(color: fill, at: HexCoordinate(0, row))
+        }
+
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+        #expect(snapshot.cellWhisper[HexCoordinate(0, 6)] == .taut)
+    }
+
+    @Test
+    func warmRowSetsAttentiveFloorWithoutTaut() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<5 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+        #expect(snapshot.cellWhisper[HexCoordinate(5, 0)] == .attentive)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .attentive)
+    }
+
+    @Test
+    func highOccupancyWithoutNearLinesUsesGlobalTautBandOnEmptyCells() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        let occupied: [HexCoordinate] = [
+            HexCoordinate(0, 0), HexCoordinate(1, 0), HexCoordinate(2, 0), HexCoordinate(3, 0),
+            HexCoordinate(0, 1), HexCoordinate(1, 1), HexCoordinate(2, 1), HexCoordinate(3, 1),
+            HexCoordinate(0, 2), HexCoordinate(1, 2), HexCoordinate(2, 2), HexCoordinate(3, 2),
+            HexCoordinate(0, 3), HexCoordinate(1, 3)
+        ]
+        for coord in occupied {
+            board.place(color: fill, at: coord)
+        }
+
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+        #expect(snapshot.band == .taut)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 6)] == .taut)
+        #expect(snapshot.cellWhisper[HexCoordinate(4, 4)] == .taut)
+    }
+
+    @Test
+    func boardPressureSnapshotExcludesOccupiedCells() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        board.place(color: fill, at: HexCoordinate(3, 3))
+
+        let snapshot = boardPressure(on: board, isOpeningState: false)
+        #expect(snapshot.cellWhisper[HexCoordinate(3, 3)] == nil)
+        #expect(snapshot.cellWhisper.count == 48)
+    }
+
+    @Test
+    func boardPressureEvaluationIsDeterministicAndDoesNotMutateBoard() {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<5 {
+            board.place(color: fill, at: HexCoordinate(col, 2))
+        }
+        let before = board.snapshot
+        let context = BoardPressureContext(
+            occupiedCellCount: before.cells.count,
+            isOpeningState: false,
+            cols: board.cols,
+            rows: board.rows
+        )
+
+        let first = BoardPressure.evaluate(board: board, context: context)
+        let second = BoardPressure.evaluate(board: board, context: context)
+
+        #expect(first == second)
+        #expect(boardSignature(board.snapshot) == boardSignature(before))
+    }
+
+    @Test
     func placementReliefContactCountUsesEngineReliefVectors() {
         let placement = [HexCoordinate(2, 2), HexCoordinate(3, 2)]
         let occupied = Set([HexCoordinate(2, 1), HexCoordinate(3, 1)])
@@ -726,6 +917,65 @@ struct CriticalPathRegressionTests {
         let context = engine.placementEvaluationContext()
         #expect(context.occupiedCellCount == 0)
         #expect(context.isOpeningState)
+    }
+
+    @Test
+    func gameEngineBoardPressureContextAtNormalRunStart() {
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        let context = engine.boardPressureContext()
+        #expect(context.occupiedCellCount == 0)
+        #expect(context.isOpeningState)
+        #expect(context.cols == engine.board.cols)
+        #expect(context.rows == engine.board.rows)
+    }
+
+    @Test
+    func gameEngineBoardPressureSnapshotMatchesDirectBoardPressureEvaluate() {
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<5 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: empty,
+            tray: [HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))]
+        )
+        let context = engine.boardPressureContext()
+        let direct = BoardPressure.evaluate(board: engine.board, context: context)
+        #expect(engine.boardPressureSnapshot() == direct)
+    }
+
+    @Test
+    func gameEngineBoardPressureOpeningStateSuppressesWarmLinePressure() {
+        let emptyCoordinates = Set(
+            engineOccupiedCoordinates(
+                excluding: (0..<6).map { HexCoordinate($0, 0) }
+            )
+        )
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: emptyCoordinates,
+            tray: [HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))]
+        )
+        #expect(engine.boardPressureContext().isOpeningState)
+        let snapshot = engine.boardPressureSnapshot()
+        #expect(snapshot.band == .calm)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .calm)
+    }
+
+    @Test
+    func gameEngineBoardPressureContextAlignsOccupancyWithPlacementEvaluationContext() {
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<4 {
+            empty.remove(HexCoordinate(col, 2))
+        }
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: empty,
+            tray: [HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))]
+        )
+        let placementContext = engine.placementEvaluationContext()
+        let pressureContext = engine.boardPressureContext()
+        #expect(pressureContext.occupiedCellCount == placementContext.occupiedCellCount)
+        #expect(pressureContext.isOpeningState == placementContext.isOpeningState)
     }
 
     @Test
@@ -946,6 +1196,10 @@ struct CriticalPathRegressionTests {
             contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+PreviewSemantics.swift"),
             encoding: .utf8
         )
+        let boardWhisperSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+BoardWhisper.swift"),
+            encoding: .utf8
+        )
         #expect(!gameSceneSource.contains("func predictedClearCoordinates"))
         #expect(!gameSceneSource.contains("func predictedClearLineCount"))
         #expect(gameSceneSource.contains("engine.previewPlacement"))
@@ -954,6 +1208,184 @@ struct CriticalPathRegressionTests {
         #expect(gameSceneSource.contains("highlightCells(resolution:"))
         #expect(!previewSemanticsSource.contains("openingReliefContactScore"))
         #expect(!previewSemanticsSource.contains("openingNeighborCoordinates"))
+        #expect(gameSceneSource.contains("boardPressureSnapshot"))
+        #expect(gameSceneSource.contains("engine.boardPressureSnapshot()"))
+        #expect(gameSceneSource.contains("applyEmptyCellAppearance(for:"))
+        #expect(gameSceneSource.contains("refreshBoardPressureSnapshot()"))
+        #expect(!gameSceneSource.contains("BoardPressure.evaluate"))
+        #expect(!boardWhisperSource.contains("BoardPressure.evaluate"))
+        #expect(!gameSceneSource.contains("fullRows()"))
+        #expect(!boardWhisperSource.contains("fullRows"))
+        #expect(!boardWhisperSource.contains("fullCols"))
+        #expect(!boardWhisperSource.contains("heatmap"))
+        let moveQualityResponseSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+MoveQualityResponse.swift"),
+            encoding: .utf8
+        )
+        #expect(gameSceneSource.contains("moveQualityDragResponse"))
+        #expect(gameSceneSource.contains("playCommitPlaceHaptic"))
+        #expect(!gameSceneSource.contains("evaluation.tier == .relief"))
+        #expect(!moveQualityResponseSource.contains("BoardPressure"))
+        let policySource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Engine/MoveQualityResponsePolicy.swift"),
+            encoding: .utf8
+        )
+        #expect(policySource.contains("evaluateCommit"))
+        #expect(!policySource.contains("BoardPressure"))
+    }
+
+    @Test
+    func gameSceneBoardWhisperSuppressedDuringOpeningAndTerminal() {
+        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: true, isTerminal: false))
+        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: false, isTerminal: true))
+        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: true, isTerminal: true))
+        #expect(GameScene.shouldApplyBoardWhisper(isOpeningState: false, isTerminal: false))
+    }
+
+    @Test
+    func gameSceneBoardWhisperMaterialDeltaIncreasesWithIntensity() {
+        #expect(
+            GameScene.boardWhisperMaterialAlphaDelta(for: .attentive)
+                < GameScene.boardWhisperMaterialAlphaDelta(for: .taut)
+        )
+        #expect(
+            GameScene.boardWhisperStrokeAlphaDelta(for: .attentive)
+                < GameScene.boardWhisperStrokeAlphaDelta(for: .taut)
+        )
+        #expect(GameScene.boardWhisperMaterialAlphaDelta(for: .calm) == 0)
+        #expect(GameScene.boardWhisperStrokeAlphaDelta(for: .calm) == 0)
+    }
+
+    @Test
+    func moveQualityResponsePolicyCommitHapticMapsConstructiveAndExpertClearsOnly() {
+        let constructive = MoveQualityResponseContext(
+            moment: .commit,
+            tier: nil,
+            isOpeningState: false,
+            clearedLineCount: 1,
+            isLegalPlacement: true
+        )
+        let expert = MoveQualityResponseContext(
+            moment: .commit,
+            tier: nil,
+            isOpeningState: false,
+            clearedLineCount: 2,
+            isLegalPlacement: true
+        )
+        let reliefNoClear = MoveQualityResponseContext(
+            moment: .commit,
+            tier: .relief,
+            isOpeningState: false,
+            clearedLineCount: 0,
+            isLegalPlacement: true
+        )
+        let survivalNoClear = MoveQualityResponseContext(
+            moment: .commit,
+            tier: .survival,
+            isOpeningState: false,
+            clearedLineCount: 0,
+            isLegalPlacement: true
+        )
+
+        #expect(MoveQualityResponsePolicy.evaluate(constructive).commitHaptic == .constructive)
+        #expect(MoveQualityResponsePolicy.evaluate(expert).commitHaptic == .expert)
+        #expect(MoveQualityResponsePolicy.evaluate(reliefNoClear).commitHaptic == .baseline)
+        #expect(MoveQualityResponsePolicy.evaluate(survivalNoClear).commitHaptic == .baseline)
+    }
+
+    @Test
+    func moveQualityCommitResponseUsesCommittedPlacementResolution() {
+        let constructiveResolution = PlacementResolution(
+            anchor: HexCoordinate(3, 0),
+            placedCoordinates: [HexCoordinate(3, 0)],
+            isLegal: true,
+            clearedRowIndices: [0],
+            clearedColIndices: [],
+            clearedCellCoordinates: (0..<7).map { HexCoordinate($0, 0) }
+        )
+        #expect(
+            GameScene.moveQualityCommitResponse(for: constructiveResolution).commitHaptic == .constructive
+        )
+
+        let expertResolution = PlacementResolution(
+            anchor: HexCoordinate(3, 3),
+            placedCoordinates: [HexCoordinate(3, 3)],
+            isLegal: true,
+            clearedRowIndices: [3],
+            clearedColIndices: [3],
+            clearedCellCoordinates: [HexCoordinate(3, 3)]
+        )
+        #expect(GameScene.moveQualityCommitResponse(for: expertResolution).commitHaptic == .expert)
+    }
+
+    @Test
+    func moveQualityResponsePolicyOpeningReliefDragMatchesPriorOpeningReliefRules() {
+        let reliefContext = MoveQualityResponseContext(
+            moment: .drag,
+            tier: .relief,
+            isOpeningState: true,
+            clearedLineCount: 0,
+            isLegalPlacement: true
+        )
+        #expect(
+            MoveQualityResponsePolicy.evaluate(reliefContext).emphasizesOpeningReliefOnDrag
+        )
+
+        let postOpening = MoveQualityResponseContext(
+            moment: .drag,
+            tier: .relief,
+            isOpeningState: false,
+            clearedLineCount: 0,
+            isLegalPlacement: true
+        )
+        #expect(
+            !MoveQualityResponsePolicy.evaluate(postOpening).emphasizesOpeningReliefOnDrag
+        )
+
+        let constructiveClear = MoveQualityResponseContext(
+            moment: .drag,
+            tier: .constructive,
+            isOpeningState: true,
+            clearedLineCount: 1,
+            isLegalPlacement: true
+        )
+        #expect(
+            !MoveQualityResponsePolicy.evaluate(constructiveClear).emphasizesOpeningReliefOnDrag
+        )
+
+        let commitMoment = MoveQualityResponseContext(
+            moment: .commit,
+            tier: .relief,
+            isOpeningState: true,
+            clearedLineCount: 0,
+            isLegalPlacement: true
+        )
+        #expect(
+            !MoveQualityResponsePolicy.evaluate(commitMoment).emphasizesOpeningReliefOnDrag
+        )
+    }
+
+    @Test
+    func moveQualityResponsePolicyHasNoBoardPressureCoupling() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let policySource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Engine/MoveQualityResponsePolicy.swift"),
+            encoding: .utf8
+        )
+        let moveQualityResponseSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+MoveQualityResponse.swift"),
+            encoding: .utf8
+        )
+        #expect(!policySource.contains("BoardPressure"))
+        #expect(!policySource.contains("BoardWhisper"))
+        #expect(!policySource.contains("boardPressure"))
+        #expect(!moveQualityResponseSource.contains("BoardPressure"))
+        #expect(!policySource.contains("recommend"))
+        #expect(!policySource.contains("hint"))
+        #expect(!policySource.contains("heatmap"))
+        #expect(!policySource.contains("targetCell"))
     }
 
     @Test
@@ -1083,8 +1515,18 @@ struct CriticalPathRegressionTests {
                 "VEXLO - Main Run - 210 - New Best"
             ),
             (
-                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Streak 1"),
+                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Balanced read"),
                 "VEXLO - Today's Challenge - 70 - Best Today"
+            ),
+            (
+                ResultSharePayload(
+                    mode: .daily,
+                    score: 70,
+                    badge: "Best Today",
+                    detail: "Balanced read",
+                    dailyRitualHeadline: "WEDNESDAY · BALANCED BOARD"
+                ),
+                "VEXLO - Today's Challenge - WEDNESDAY · BALANCED BOARD - 70 - Best Today"
             )
         ]
 
@@ -1559,6 +2001,20 @@ struct MonetizationOfferLifecycleRegressionTests {
         #expect(analyticsAfterContinueReset.continueUsedCount == analyticsAfterContinue.continueUsedCount)
         #expect(analyticsAfterContinueReset.rerollUsedCount == analyticsAfterContinue.rerollUsedCount)
     }
+}
+
+private func boardPressure(
+    on board: HexBoard,
+    occupiedCellCount: Int? = nil,
+    isOpeningState: Bool
+) -> BoardPressureSnapshot {
+    let context = BoardPressureContext(
+        occupiedCellCount: occupiedCellCount ?? board.snapshot.cells.count,
+        isOpeningState: isOpeningState,
+        cols: board.cols,
+        rows: board.rows
+    )
+    return BoardPressure.evaluate(board: board, context: context)
 }
 
 private func placementEvaluation(

@@ -11,6 +11,7 @@ final class GameScene: SKScene {
 
     let engine = GameEngine()
     private var cellNodes: [HexCoordinate: SKShapeNode] = [:]
+    private var boardPressureSnapshot: BoardPressureSnapshot?
     private var traySlots: [SKShapeNode] = []
     private var traySlotFrames: [CGRect] = []
     private var trayPreviews: [SKNode?] = [nil, nil, nil]
@@ -168,14 +169,14 @@ final class GameScene: SKScene {
             utilityRowHitHeight: compact ? 44 : 46,
             utilityPanelTopInset: compact ? 17 : 18,
             utilityPanelBottomInset: compact ? 14 : 16,
-            overlayCaptionOffset: compact ? 94 : 106,
-            overlayScoreOffset: compact ? 20 : 24,
+            overlayCaptionOffset: compact ? 98 : 112,
+            overlayScoreOffset: compact ? 18 : 22,
             overlayBadgeOffset: compact ? -29 : -35,
             overlayDetailOffset: compact ? -52 : -59,
             overlayActionsStartOffset: compact ? -96 : -108,
             overlaySecondarySpacing: compact ? 18 : 19,
             overlayContinueSize: CGSize(width: actionWidth, height: compact ? 46 : 48),
-            overlayRestartSize: CGSize(width: actionWidth, height: compact ? 54 : 56),
+            overlayRestartSize: CGSize(width: actionWidth - (compact ? 18 : 20), height: compact ? 54 : 56),
             overlayScoreFontSize: compact ? 68 : 78,
             rerollBadgeInset: compact ? 16 : 18,
             boardVerticalBias: compact ? 0.53 : (tall ? 0.5 : 0.525)
@@ -185,15 +186,25 @@ final class GameScene: SKScene {
     private final class ResultOverlaySurface {
         let node = SKNode()
         let captionLabel = SKLabelNode()
+        let scoreShadowLabel = SKLabelNode()
         let scoreLabel = SKLabelNode()
         let detailLabel = SKLabelNode()
         let badgeLabel = SKLabelNode()
         let progressLabel = SKLabelNode()
         let gamesLabel = SKLabelNode()
         let shareLabel = SKLabelNode()
+        let shareIcon = SKSpriteNode()
         let continueButton = SKShapeNode()
-        private let sharePill = SKShapeNode()
+        private let monumentAura = SKShapeNode()
+        private let headingField = SKShapeNode()
+        private let monumentVeil = SKShapeNode()
+        private let badgeCapsule = SKShapeNode()
+        private let scoreField = SKShapeNode()
         private let restartButton = SKShapeNode()
+        private let restartBase = SKShapeNode()
+        private let restartHalo = SKShapeNode()
+        private let restartInnerStroke = SKShapeNode()
+        private let restartLabel = SKLabelNode()
 
         func rebuild(
             in scene: SKScene,
@@ -209,10 +220,39 @@ final class GameScene: SKScene {
             scene.addChild(node)
 
             let bg = SKShapeNode(rectOf: size)
-            bg.fillColor = UIColor(hex: "06060E").withAlphaComponent(0.64)
+            bg.fillColor = UIColor(hex: "04050B").withAlphaComponent(0.82)
             bg.strokeColor = .clear
             bg.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5)
             node.addChild(bg)
+
+            monumentAura.fillColor = UIColor(hex: "070914").withAlphaComponent(0.044)
+            monumentAura.strokeColor = .clear
+            monumentAura.zPosition = 200.25
+            node.addChild(monumentAura)
+
+            headingField.fillColor = UIColor.white.withAlphaComponent(0.005)
+            headingField.strokeColor = .clear
+            headingField.lineWidth = 0
+            headingField.zPosition = 200.5
+            node.addChild(headingField)
+
+            monumentVeil.fillColor = UIColor(hex: "060811").withAlphaComponent(0.66)
+            monumentVeil.strokeColor = .clear
+            monumentVeil.zPosition = 200.35
+            node.addChild(monumentVeil)
+
+            scoreField.fillColor = UIColor(hex: "060914").withAlphaComponent(0.74)
+            scoreField.strokeColor = UIColor.white.withAlphaComponent(0.038)
+            scoreField.lineWidth = 0.8
+            scoreField.zPosition = 200.36
+            node.addChild(scoreField)
+
+            badgeCapsule.fillColor = UIColor(hex: "17131C").withAlphaComponent(0.78)
+            badgeCapsule.strokeColor = UIColor(hex: "C4A862").withAlphaComponent(0.24)
+            badgeCapsule.lineWidth = 0.85
+            badgeCapsule.zPosition = 200.40
+            badgeCapsule.isHidden = true
+            node.addChild(badgeCapsule)
 
             configureCaptionLabel(size: size, metrics: metrics, labelFactory: labelFactory)
             configureScoreLabel(size: size, metrics: metrics, labelFactory: labelFactory)
@@ -237,12 +277,13 @@ final class GameScene: SKScene {
             fitLabelWidth: (SKLabelNode, CGFloat, CGFloat) -> Void
         ) {
             scoreLabel.text = "\(score)"
+            scoreShadowLabel.text = "\(score)"
             captionLabel.text = caption
             badgeLabel.text = badge
             detailLabel.text = detail
             progressLabel.text = progress
             applyVisualState(isDaily: isDaily, score: score, size: size, metrics: metrics)
-            relayout(size: size, metrics: metrics, isDaily: isDaily, fitLabelWidth: fitLabelWidth)
+            relayout(size: size, metrics: metrics, isDaily: isDaily, score: score, fitLabelWidth: fitLabelWidth)
         }
 
         func updateGameCenterSurface(
@@ -271,10 +312,10 @@ final class GameScene: SKScene {
                 progressText: progressLabel.text
             )
             gamesLabel.isHidden = !shouldShowGames
-            gamesLabel.alpha = shouldShowGames ? 1 : 0
+            gamesLabel.alpha = shouldShowGames ? (isDaily ? 0.78 : 0.74) : 0
             progressLabel.isHidden = !shouldShowProgress
-            progressLabel.alpha = shouldShowProgress ? 1 : 0
-            relayout(size: size, metrics: metrics, isDaily: isDaily, fitLabelWidth: fitLabelWidth)
+            progressLabel.alpha = shouldShowProgress ? (isDaily ? 0.84 : 0.80) : 0
+            relayout(size: size, metrics: metrics, isDaily: isDaily, score: Int(scoreLabel.text ?? "") ?? 0, fitLabelWidth: fitLabelWidth)
         }
 
         func updateShareVisibility(
@@ -289,9 +330,9 @@ final class GameScene: SKScene {
             let shouldShowShare = GameScene.shouldShowResultShare(canShare: canShare, showsContinue: showsContinue)
             shareLabel.isHidden = !shouldShowShare
             shareLabel.alpha = shouldShowShare ? 0.82 : 0
-            sharePill.isHidden = !shouldShowShare
-            sharePill.alpha = shouldShowShare ? 0.88 : 0
-            relayout(size: size, metrics: metrics, isDaily: isDaily, fitLabelWidth: fitLabelWidth)
+            shareIcon.isHidden = !shouldShowShare
+            shareIcon.alpha = shouldShowShare ? 0.82 : 0
+            relayout(size: size, metrics: metrics, isDaily: isDaily, score: Int(scoreLabel.text ?? "") ?? 0, fitLabelWidth: fitLabelWidth)
         }
 
         func updateContinueVisibility(
@@ -303,7 +344,7 @@ final class GameScene: SKScene {
         ) {
             continueButton.isHidden = !isVisible
             continueButton.alpha = isVisible ? 0.96 : 0
-            relayout(size: size, metrics: metrics, isDaily: isDaily, fitLabelWidth: fitLabelWidth)
+            relayout(size: size, metrics: metrics, isDaily: isDaily, score: Int(scoreLabel.text ?? "") ?? 0, fitLabelWidth: fitLabelWidth)
         }
 
         func present(prefersReducedMotion: Bool) {
@@ -328,8 +369,8 @@ final class GameScene: SKScene {
             node.setScale(1)
             node.isHidden = true
             gamesLabel.isHidden = true
+            shareIcon.isHidden = true
             shareLabel.isHidden = true
-            sharePill.isHidden = true
         }
 
         private func configureCaptionLabel(
@@ -338,9 +379,11 @@ final class GameScene: SKScene {
             labelFactory: (String, CGFloat, UIColor, CGFloat, SKLabelHorizontalAlignmentMode, Bool) -> SKLabelNode
         ) {
             copyLabel(
-                from: labelFactory(VexloStrings.Overlay.gameOver, 18, .white, 0.58, .center, true),
+                from: labelFactory(VexloStrings.Overlay.gameOver, 19, .white, 0.64, .center, true),
                 into: captionLabel
             )
+            captionLabel.fontName = "SFProDisplay-Regular"
+            captionLabel.zPosition = 200.43
             captionLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayCaptionOffset)
             node.addChild(captionLabel)
         }
@@ -354,6 +397,10 @@ final class GameScene: SKScene {
                 from: labelFactory("0", metrics.overlayScoreFontSize, .white, 1, .center, true),
                 into: scoreLabel
             )
+            copyLabel(
+                from: labelFactory("0", metrics.overlayScoreFontSize, UIColor(hex: "111528"), 0.18, .center, true),
+                into: scoreShadowLabel
+            )
             let scoreFontCandidates = [
                 "SFProRounded-Black",
                 "SFProRounded-Heavy",
@@ -365,7 +412,12 @@ final class GameScene: SKScene {
                 "SFProDisplay-Bold"
             ]
             let scoreFont = scoreFontCandidates.first { UIFont(name: $0, size: 1) != nil } ?? "SFProDisplay-Bold"
+            scoreShadowLabel.fontName = scoreFont
+            scoreShadowLabel.zPosition = 200.38
+            scoreShadowLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayScoreOffset)
+            node.addChild(scoreShadowLabel)
             scoreLabel.fontName = scoreFont
+            scoreLabel.zPosition = 200.39
             scoreLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayScoreOffset)
             node.addChild(scoreLabel)
         }
@@ -376,9 +428,12 @@ final class GameScene: SKScene {
             labelFactory: (String, CGFloat, UIColor, CGFloat, SKLabelHorizontalAlignmentMode, Bool) -> SKLabelNode
         ) {
             copyLabel(
-                from: labelFactory("", 11.8, UIColor(hex: "6C5CE7"), 0.9, .center, true),
+                from: labelFactory("", 11.4, UIColor(hex: "6C5CE7"), 0.82, .center, true),
                 into: badgeLabel
             )
+            badgeLabel.fontName = "SFProDisplay-Semibold"
+            badgeLabel.verticalAlignmentMode = .center
+            badgeLabel.zPosition = 200.41
             badgeLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayBadgeOffset)
             node.addChild(badgeLabel)
         }
@@ -392,7 +447,8 @@ final class GameScene: SKScene {
                 from: labelFactory("", 14.5, .white, 0.66, .center, false),
                 into: detailLabel
             )
-            detailLabel.fontName = "SFProDisplay-Bold"
+            detailLabel.fontName = "SFProDisplay-Semibold"
+            detailLabel.zPosition = 200.42
             detailLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayDetailOffset)
             node.addChild(detailLabel)
         }
@@ -406,6 +462,7 @@ final class GameScene: SKScene {
                 from: labelFactory(VexloStrings.Overlay.gameCenter, 12.5, .white, 0.5, .center, true),
                 into: progressLabel
             )
+            progressLabel.fontName = "SFProDisplay-Medium"
             progressLabel.name = "progress"
             progressLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset)
             node.addChild(progressLabel)
@@ -420,6 +477,7 @@ final class GameScene: SKScene {
                 from: labelFactory("", 12, .white, 0.44, .center, true),
                 into: gamesLabel
             )
+            gamesLabel.fontName = "SFProDisplay-Medium"
             gamesLabel.name = "games"
             gamesLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset - metrics.overlaySecondarySpacing)
             gamesLabel.isHidden = true
@@ -432,28 +490,29 @@ final class GameScene: SKScene {
             labelFactory: (String, CGFloat, UIColor, CGFloat, SKLabelHorizontalAlignmentMode, Bool) -> SKLabelNode
         ) {
             copyLabel(
-                from: labelFactory("", 14, UIColor(hex: "F4F3FF"), 0.82, .center, true),
+                from: labelFactory("", 13, UIColor(hex: "F4F3FF"), 0.72, .center, true),
                 into: shareLabel
             )
             shareLabel.name = "share"
-            shareLabel.fontSize = 14
-            shareLabel.fontName = "SFProDisplay-Bold"
-            shareLabel.fontColor = UIColor(hex: "F4F3FF").withAlphaComponent(0.82)
+            shareLabel.fontSize = 12.5
+            shareLabel.fontName = "SFProDisplay-Semibold"
+            shareLabel.fontColor = UIColor(hex: "D5DCF8").withAlphaComponent(0.72)
             shareLabel.text = VexloStrings.Overlay.shareResult
             shareLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset - metrics.overlaySecondarySpacing * 2)
             shareLabel.zPosition = 202
             shareLabel.isHidden = true
 
-            sharePill.name = "sharePill"
-            sharePill.path = CGPath(roundedRect: CGRect(x: -70, y: -17, width: 140, height: 34), cornerWidth: 17, cornerHeight: 17, transform: nil)
-            sharePill.fillColor = UIColor(hex: "6C5CE7").withAlphaComponent(0.24)
-            sharePill.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.28)
-            sharePill.lineWidth = 0.9
-            sharePill.zPosition = shareLabel.zPosition - 1
-            sharePill.position = shareLabel.position
-            sharePill.isHidden = true
+            if let image = UIImage(
+                systemName: "square.and.arrow.up",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+            )?.withTintColor(UIColor(hex: "D7DEEF"), renderingMode: .alwaysOriginal) {
+                shareIcon.texture = SKTexture(image: image)
+                shareIcon.size = image.size
+            }
+            shareIcon.zPosition = shareLabel.zPosition
+            shareIcon.isHidden = true
 
-            node.addChild(sharePill)
+            node.addChild(shareIcon)
             node.addChild(shareLabel)
         }
 
@@ -494,27 +553,34 @@ final class GameScene: SKScene {
             metrics: LayoutMetrics,
             labelFactory: (String, CGFloat, UIColor, CGFloat, SKLabelHorizontalAlignmentMode, Bool) -> SKLabelNode
         ) {
-            restartButton.path = CGPath(
-                roundedRect: CGRect(
-                    x: -140,
-                    y: -metrics.overlayRestartSize.height * 0.5,
-                    width: 280,
-                    height: metrics.overlayRestartSize.height
-                ),
-                cornerWidth: metrics.overlayRestartSize.height * 0.5,
-                cornerHeight: metrics.overlayRestartSize.height * 0.5,
-                transform: nil
-            )
             restartButton.name = "restart"
-            restartButton.fillColor = UIColor(hex: "6C5CE7")
-            restartButton.strokeColor = .clear
+            restartButton.fillColor = UIColor(hex: "6964EA").withAlphaComponent(0.975)
+            restartButton.strokeColor = UIColor(hex: "C5CBFF").withAlphaComponent(0.28)
+            restartButton.lineWidth = 1.1
             restartButton.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayActionsStartOffset - 118)
             restartButton.zPosition = 201
             restartButton.removeAllChildren()
-
-            let restartLabel = labelFactory(VexloStrings.Overlay.playAgain, 15, .white, 1, .center, true)
+            restartBase.fillColor = UIColor(hex: "101428").withAlphaComponent(0.92)
+            restartBase.strokeColor = .clear
+            restartBase.zPosition = -2
+            restartButton.addChild(restartBase)
+            restartHalo.fillColor = UIColor(hex: "9A99FF").withAlphaComponent(0.16)
+            restartHalo.strokeColor = .clear
+            restartHalo.zPosition = -1
+            restartButton.addChild(restartHalo)
+            restartInnerStroke.fillColor = .clear
+            restartInnerStroke.strokeColor = UIColor.white.withAlphaComponent(0.132)
+            restartInnerStroke.lineWidth = 0.9
+            restartInnerStroke.zPosition = 1
+            restartButton.addChild(restartInnerStroke)
+            copyLabel(
+                from: labelFactory(VexloStrings.Overlay.playAgain, 22, UIColor(hex: "F5F4FB"), 1, .center, true),
+                into: restartLabel
+            )
+            restartLabel.fontName = "SFProDisplay-Semibold"
             restartLabel.verticalAlignmentMode = .center
             restartLabel.position = .zero
+            restartLabel.zPosition = 2
             restartButton.addChild(restartLabel)
             node.addChild(restartButton)
         }
@@ -530,13 +596,51 @@ final class GameScene: SKScene {
             target.zPosition = source.zPosition
         }
 
+        private func masterScaleX(for size: CGSize) -> CGFloat {
+            size.width / 440
+        }
+
+        private func masterScaleY(for size: CGSize) -> CGFloat {
+            size.height / 956
+        }
+
+        private func masterFontScale(for size: CGSize) -> CGFloat {
+            min(masterScaleX(for: size), masterScaleY(for: size))
+        }
+
+        private func masterY(_ value: CGFloat, in size: CGSize) -> CGFloat {
+            size.height - size.height * (value / 956)
+        }
+
+        private func masterTopCenterY(_ top: CGFloat, height: CGFloat, in size: CGSize) -> CGFloat {
+            let scaleY = masterScaleY(for: size)
+            return size.height - ((top + height * 0.5) * scaleY)
+        }
+
+        private func masterRect(_ rect: CGRect, in size: CGSize) -> CGRect {
+            let scaleX = masterScaleX(for: size)
+            let scaleY = masterScaleY(for: size)
+            return CGRect(
+                x: rect.origin.x * scaleX,
+                y: size.height - ((rect.origin.y + rect.height) * scaleY),
+                width: rect.width * scaleX,
+                height: rect.height * scaleY
+            )
+        }
+
         private func applyVisualState(isDaily: Bool, score: Int, size: CGSize, metrics: LayoutMetrics) {
             let isSpecial = badgeLabel.text?.isEmpty == false
             let isEditorialTerminal = isDaily || isSpecial
-            let isCompactHeight = size.height < 760
+            let isWeakScoreTerminal = !isEditorialTerminal && score < 10
+            let isZeroScoreTerminal = isWeakScoreTerminal && score == 0
+            let fontScale = masterFontScale(for: size)
             let lowScoreScale: CGFloat
             if isSpecial {
                 lowScoreScale = 1
+            } else if isZeroScoreTerminal {
+                lowScoreScale = 1.08
+            } else if isWeakScoreTerminal {
+                lowScoreScale = 1.0
             } else if score == 0 {
                 lowScoreScale = 0.82
             } else if score < 10 {
@@ -546,45 +650,52 @@ final class GameScene: SKScene {
             } else {
                 lowScoreScale = 1
             }
+            let detailScale: CGFloat = isZeroScoreTerminal ? 0.84 : (isWeakScoreTerminal ? 0.88 : 0.86)
 
-            let detailAlpha: CGFloat = isDaily ? (isSpecial ? 0.76 : (score == 0 ? 0.68 : 0.74)) : (isSpecial ? 0.78 : (score == 0 ? 0.72 : 0.8))
-            captionLabel.fontColor = UIColor(hex: isDaily ? "DDE6FF" : "A8B4FF").withAlphaComponent(isDaily ? 0.84 : 0.78)
-            captionLabel.fontSize = isCompactHeight ? 18.4 : 19.2
-            detailLabel.fontColor = UIColor.white.withAlphaComponent(detailAlpha)
-            let baseScoreFontSize = metrics.overlayScoreFontSize + (isDaily ? 4 : 6)
-            scoreLabel.fontSize = baseScoreFontSize * lowScoreScale
+            captionLabel.fontName = "SFProDisplay-Regular"
+            captionLabel.fontColor = UIColor(hex: "ECEEF7").withAlphaComponent(0.95)
+            captionLabel.alpha = 1.0
+            captionLabel.fontSize = 27 * fontScale
+            detailLabel.fontName = "SFProDisplay-Medium"
+            detailLabel.fontColor = UIColor(hex: "E8ECF4").withAlphaComponent(0.92)
+            detailLabel.alpha = isWeakScoreTerminal ? 0.82 : 0.88
+            detailLabel.fontSize = 17.6 * fontScale * detailScale
+            scoreLabel.fontSize = 98 * fontScale * lowScoreScale
+            scoreShadowLabel.fontSize = 98 * fontScale * lowScoreScale
+            scoreShadowLabel.alpha = isZeroScoreTerminal ? 0.14 : 0.18
+            scoreLabel.alpha = 1.0
             let isNormalHistoryLineVisible = !isDaily && !(progressLabel.text?.isEmpty ?? true)
-            progressLabel.fontName = isEditorialTerminal ? "SFProDisplay-Medium" : (isNormalHistoryLineVisible ? "SFProDisplay-Bold" : "SFProDisplay-Semibold")
-            progressLabel.fontSize = isEditorialTerminal ? 11.8 : (isNormalHistoryLineVisible ? 12.9 : 12.2)
-            progressLabel.fontColor = UIColor(hex: "F4F3FF")
-            progressLabel.alpha = isEditorialTerminal ? (isDaily ? 0.34 : 0.38) : (isNormalHistoryLineVisible ? 0.56 : 0.46)
-            gamesLabel.fontSize = isEditorialTerminal ? 11.8 : 12.2
-            gamesLabel.fontColor = UIColor(hex: "F4F3FF")
-            gamesLabel.alpha = gamesLabel.isHidden ? 0 : (isEditorialTerminal ? 0.34 : 0.42)
-
-            let captionLift: CGFloat = isCompactHeight ? 3 : 5
-            let scoreLift: CGFloat = isCompactHeight ? 2 : 3
-            let clusterTightening: CGFloat = isEditorialTerminal ? (isCompactHeight ? 5 : 7) : (isCompactHeight ? 3 : 4)
-            captionLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayCaptionOffset + captionLift)
-            scoreLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayScoreOffset + scoreLift)
-            badgeLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayBadgeOffset + clusterTightening)
-            detailLabel.position = CGPoint(x: size.width * 0.5, y: size.height * 0.5 + metrics.overlayDetailOffset + clusterTightening)
+            progressLabel.fontName = "SFProDisplay-Semibold"
+            progressLabel.fontSize = 13.2 * fontScale
+            progressLabel.fontColor = UIColor(hex: "DCE2EF")
+            progressLabel.alpha = isEditorialTerminal ? 0.88 : (isNormalHistoryLineVisible ? 0.84 : 0.70)
+            gamesLabel.fontName = "SFProDisplay-Semibold"
+            gamesLabel.fontSize = 13.2 * fontScale
+            gamesLabel.fontColor = UIColor(hex: "D7DEED")
+            gamesLabel.alpha = gamesLabel.isHidden ? 0 : 0.82
+            shareLabel.fontName = "SFProDisplay-Semibold"
+            shareLabel.fontSize = 13.6 * fontScale
+            shareLabel.fontColor = UIColor(hex: "DDE4F2").withAlphaComponent(0.82)
+            shareIcon.alpha = 0.82
 
             if isDaily {
-                badgeLabel.fontColor = UIColor(hex: "8EDFCB").withAlphaComponent(0.74)
-                badgeLabel.fontSize = 11.8
-                detailLabel.fontSize = 14.8
-                scoreLabel.fontColor = UIColor(hex: "F8FBFF")
+                badgeLabel.fontName = "SFProDisplay-Semibold"
+                badgeLabel.fontColor = UIColor(hex: "D3B46D")
+                badgeLabel.alpha = 0.95
+                badgeLabel.fontSize = 12.8 * fontScale
+                scoreLabel.fontColor = UIColor(hex: "F2F1F6")
             } else if isSpecial {
-                badgeLabel.fontColor = UIColor(hex: "B5A8FF").withAlphaComponent(0.72)
-                badgeLabel.fontSize = 11.8
-                detailLabel.fontSize = 14.8
-                scoreLabel.fontColor = UIColor(hex: "FBF9FF")
+                badgeLabel.fontName = "SFProDisplay-Semibold"
+                badgeLabel.fontColor = UIColor(hex: "D3B46D")
+                badgeLabel.alpha = 0.95
+                badgeLabel.fontSize = 12.8 * fontScale
+                scoreLabel.fontColor = UIColor(hex: "F2F1F6")
             } else {
-                badgeLabel.fontColor = UIColor(hex: "6C5CE7").withAlphaComponent(0.78)
-                badgeLabel.fontSize = 12.4
-                detailLabel.fontSize = 15.2
-                scoreLabel.fontColor = UIColor(hex: "FBF9FF")
+                badgeLabel.fontName = "SFProDisplay-Semibold"
+                badgeLabel.fontColor = UIColor(hex: "D3B46D")
+                badgeLabel.alpha = 0
+                badgeLabel.fontSize = 12.8 * fontScale
+                scoreLabel.fontColor = UIColor(hex: "F2F1F6")
             }
         }
 
@@ -592,53 +703,282 @@ final class GameScene: SKScene {
             size: CGSize,
             metrics: LayoutMetrics,
             isDaily: Bool,
+            score: Int,
             fitLabelWidth: (SKLabelNode, CGFloat, CGFloat) -> Void
         ) {
-            let centerY = size.height * 0.5
-            var currentY = centerY + metrics.overlayActionsStartOffset
+            let isCompactHeight = size.height < 760
+            let isWeakScoreTerminal = !isDaily && (badgeLabel.text?.isEmpty ?? true) && score < 10
+            let isZeroScoreTerminal = isWeakScoreTerminal && score == 0
+            let hasHonorBadge = !(badgeLabel.text?.isEmpty ?? true)
             fitLabelWidth(progressLabel, size.width - metrics.sideInset * 2 - 24, 0.78)
             fitLabelWidth(gamesLabel, size.width - metrics.sideInset * 2 - 24, 0.78)
             fitLabelWidth(shareLabel, size.width - metrics.sideInset * 2 - 24, 0.78)
             fitLabelWidth(detailLabel, size.width - metrics.sideInset * 2 - 16, 0.8)
             fitLabelWidth(badgeLabel, size.width - metrics.sideInset * 2 - 16, 0.8)
-            let infoGap = max(11, metrics.overlaySecondarySpacing - 5)
-            let hasAuxiliaryInfo = !progressLabel.isHidden || !gamesLabel.isHidden || !shareLabel.isHidden
-            let auxiliaryToBridgeGap: CGFloat = hasAuxiliaryInfo ? 18 : 14
-            let bridgeToPrimaryGap: CGFloat = 17
-            let directToPrimaryGap: CGFloat = hasAuxiliaryInfo ? 24 : 18
-            let labelBottom: (SKLabelNode) -> CGFloat = { label in
-                label.position.y - max(label.frame.height, label.fontSize)
-            }
+            let centerX = size.width * 0.5
+            let fontScale = masterFontScale(for: size)
+            let scaleX = masterScaleX(for: size)
+            let scaleY = masterScaleY(for: size)
+            let headingY = masterY(316, in: size)
+            let badgeY = masterY(352, in: size)
+            let scoreY = masterY(436, in: size)
+            let detailY = masterY(524, in: size)
+            let shareActionHeight = max(shareLabel.fontSize * 1.05, 16 * fontScale)
+            let hasSupportContent = !progressLabel.isHidden || !gamesLabel.isHidden
+            let restartSize = CGSize(width: 214 * masterScaleX(for: size), height: 78 * masterScaleY(for: size))
+            let desiredRestartCenterY = masterTopCenterY(804, height: 78, in: size)
+            let trayTop: CGFloat = 80 + 96 + 24
+            let minimumRestartTop = trayTop + (isCompactHeight ? 22 : 12)
+            let restartCenterY = max(desiredRestartCenterY, minimumRestartTop + restartSize.height * 0.5)
+            let restartTopEdge = restartCenterY + restartSize.height * 0.5
+            let minimumShareGap = (isCompactHeight ? 22 : 28) * masterScaleY(for: size)
+            let minimumShareCenterY = restartTopEdge + minimumShareGap + shareActionHeight * 0.5
+            let badgeDropY = hasHonorBadge ? (2 * fontScale) : 0
+            let scoreLiftY = (isZeroScoreTerminal ? (10 * fontScale) : (isWeakScoreTerminal ? (7 * fontScale) : (4 * fontScale))) + (hasHonorBadge ? (2 * fontScale) : 0)
+            let detailLiftY = (isZeroScoreTerminal ? (13 * fontScale) : (isWeakScoreTerminal ? (10 * fontScale) : (8 * fontScale))) + (hasHonorBadge ? (3 * fontScale) : (2 * fontScale))
 
-            if !progressLabel.isHidden {
-                let isNormalHistoryLineVisible = !isDaily && !(progressLabel.text?.isEmpty ?? true)
-                progressLabel.position = CGPoint(x: size.width * 0.5, y: currentY + (isNormalHistoryLineVisible ? 2 : 0))
-                currentY = labelBottom(progressLabel) - (isNormalHistoryLineVisible ? infoGap + 1 : infoGap)
-            }
-
-            if !gamesLabel.isHidden {
-                gamesLabel.position = CGPoint(x: size.width * 0.5, y: currentY)
-                currentY = labelBottom(gamesLabel) - infoGap
-            }
-            if !shareLabel.isHidden {
-                let sharePillSize = CGSize(width: 140, height: 34)
-                let pillCenter = CGPoint(x: size.width * 0.5, y: currentY - sharePillSize.height * 0.5)
-                let shareTextHeight = max(shareLabel.frame.height, shareLabel.fontSize)
-                shareLabel.position = CGPoint(x: pillCenter.x, y: pillCenter.y + shareTextHeight * 0.48)
-                sharePill.position = pillCenter
-                currentY = pillCenter.y - sharePillSize.height * 0.5 - auxiliaryToBridgeGap
-            }
-            if !continueButton.isHidden {
-                continueButton.position = CGPoint(x: size.width * 0.5, y: currentY - metrics.overlayContinueSize.height * 0.55)
-                currentY = continueButton.position.y - metrics.overlayContinueSize.height * 0.5 - bridgeToPrimaryGap
+            captionLabel.position = CGPoint(x: centerX, y: headingY)
+            badgeLabel.position = CGPoint(x: centerX + (0.2 * fontScale), y: badgeY - badgeDropY + (0.35 * fontScale))
+            badgeCapsule.isHidden = true
+            if hasHonorBadge {
+                let text = badgeLabel.text ?? ""
+                let badgeTextWidth = badgeLabel.fontSize * CGFloat(text.count) * 0.47
+                let capsuleWidth = max(92 * scaleX, badgeTextWidth + 20 * fontScale)
+                let capsuleHeight = 16 * scaleY
+                badgeCapsule.path = CGPath(
+                    roundedRect: CGRect(
+                        x: -capsuleWidth * 0.5,
+                        y: -capsuleHeight * 0.5,
+                        width: capsuleWidth,
+                        height: capsuleHeight
+                    ),
+                    cornerWidth: 3 * fontScale,
+                    cornerHeight: 3 * fontScale,
+                    transform: nil
+                )
+                badgeCapsule.position = CGPoint(x: centerX, y: badgeLabel.position.y - badgeLabel.fontSize * 0.12)
+                badgeCapsule.fillColor = UIColor(hex: "17121A").withAlphaComponent(isDaily ? 0.50 : 0.44)
+                badgeCapsule.strokeColor = UIColor(hex: "C6AB68").withAlphaComponent(isDaily ? 0.24 : 0.18)
+                badgeCapsule.isHidden = false
             } else {
-                continueButton.position = CGPoint(x: size.width * 0.5, y: centerY + metrics.overlayActionsStartOffset - 68)
+                badgeCapsule.isHidden = true
             }
 
-            if continueButton.isHidden {
-                currentY -= max(0, directToPrimaryGap - auxiliaryToBridgeGap)
+            scoreLabel.position = CGPoint(x: centerX, y: scoreY + scoreLiftY)
+            scoreShadowLabel.position = CGPoint(
+                x: scoreLabel.position.x + (1.2 * fontScale),
+                y: scoreLabel.position.y - (1.8 * fontScale)
+            )
+
+            let scoreDigits = max(1, String(max(0, score)).count)
+            let estimatedScoreWidth = scoreLabel.fontSize * CGFloat(scoreDigits) * 0.72
+            let scoreFieldWidth = min(estimatedScoreWidth + 72 * fontScale, 300 * scaleX)
+            let scoreFieldHeight = scoreLabel.fontSize * 0.66 + 10 * fontScale
+            scoreField.path = CGPath(
+                roundedRect: CGRect(
+                    x: -scoreFieldWidth * 0.5,
+                    y: -scoreFieldHeight * 0.5,
+                    width: scoreFieldWidth,
+                    height: scoreFieldHeight
+                ),
+                cornerWidth: 40 * fontScale,
+                cornerHeight: 40 * fontScale,
+                transform: nil
+            )
+            scoreField.position = CGPoint(x: centerX, y: scoreLabel.position.y - scoreLabel.fontSize * 0.01)
+            scoreField.fillColor = UIColor(hex: "060914").withAlphaComponent(isZeroScoreTerminal ? 0.46 : (isWeakScoreTerminal ? 0.38 : 0.32))
+            scoreField.strokeColor = UIColor.white.withAlphaComponent(isZeroScoreTerminal ? 0.012 : 0.008)
+            detailLabel.position = CGPoint(x: centerX, y: detailY + detailLiftY + (2 * fontScale))
+
+            let supportTopGap = hasSupportContent ? (44 * fontScale) : (40 * fontScale)
+            var supportCenterY = detailLabel.position.y - supportTopGap
+            let supportUpperOffset = 7 * fontScale
+            let supportLowerOffset = 7 * fontScale
+            let supportToShareGap = (isCompactHeight ? 24 : 28) * fontScale
+            let supportSingleLineDescent = 8 * fontScale
+            let supportDoubleLineDescent = 10 * fontScale
+            let shareToRestartGap = (isCompactHeight ? 22 : 28) * scaleY
+            let shareLabelOpticalOffset = shareLabel.fontSize * 0.12
+
+            let supportLineBottomOffset: CGFloat = (!progressLabel.isHidden && !gamesLabel.isHidden) ? supportDoubleLineDescent : supportSingleLineDescent
+            let desiredSupportBottomY = minimumShareCenterY + shareActionHeight * 0.5 + supportToShareGap
+            let actualSupportBottomY = supportCenterY - supportLineBottomOffset
+            if actualSupportBottomY < desiredSupportBottomY {
+                supportCenterY += desiredSupportBottomY - actualSupportBottomY
             }
-            restartButton.position = CGPoint(x: size.width * 0.5, y: currentY - metrics.overlayRestartSize.height * 0.5)
+
+            if !progressLabel.isHidden && !gamesLabel.isHidden {
+                progressLabel.position = CGPoint(x: centerX, y: supportCenterY + supportUpperOffset)
+                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - supportLowerOffset)
+            } else if !progressLabel.isHidden {
+                progressLabel.position = CGPoint(x: centerX, y: supportCenterY)
+                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - (12 * fontScale))
+            } else if !gamesLabel.isHidden {
+                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY)
+                progressLabel.position = CGPoint(x: centerX, y: supportCenterY + (12 * fontScale))
+            } else {
+                progressLabel.position = CGPoint(x: centerX, y: supportCenterY)
+                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - (12 * fontScale))
+            }
+
+            if !shareLabel.isHidden {
+                let supportBottomY: CGFloat
+                if !progressLabel.isHidden && !gamesLabel.isHidden {
+                    supportBottomY = min(progressLabel.position.y, gamesLabel.position.y) - supportDoubleLineDescent
+                } else if !progressLabel.isHidden {
+                    supportBottomY = progressLabel.position.y - supportSingleLineDescent
+                } else if !gamesLabel.isHidden {
+                    supportBottomY = gamesLabel.position.y - supportSingleLineDescent
+                } else {
+                    supportBottomY = detailLabel.position.y - (30 * fontScale)
+                }
+                let desiredShareCenterY = supportBottomY - supportToShareGap - shareActionHeight * 0.5
+                let shareCenterY = max(minimumShareCenterY, desiredShareCenterY)
+                let shareText = shareLabel.text ?? ""
+                let shareLabelWidth = max(shareLabel.frame.width, shareLabel.fontSize * CGFloat(shareText.count) * 0.44)
+                let shareIconWidth = shareIcon.size.width * 0.88
+                let shareIconGap = 7 * fontScale
+                let shareGroupWidth = shareIconWidth + shareIconGap + shareLabelWidth
+                let shareLeftEdge = centerX - shareGroupWidth * 0.5
+                shareIcon.position = CGPoint(
+                    x: shareLeftEdge + shareIconWidth * 0.5,
+                    y: shareCenterY + shareLabel.fontSize * 0.02
+                )
+                shareLabel.position = CGPoint(
+                    x: shareLeftEdge + shareIconWidth + shareIconGap + shareLabelWidth * 0.5,
+                    y: shareCenterY + shareLabelOpticalOffset
+                )
+                shareIcon.setScale(0.88)
+                shareIcon.isHidden = false
+            }
+
+            if shareLabel.isHidden {
+                shareIcon.isHidden = true
+            }
+
+            let fallbackShareCenterY = minimumShareCenterY
+            continueButton.position = CGPoint(x: centerX, y: fallbackShareCenterY - shareToRestartGap)
+
+            restartButton.path = CGPath(
+                roundedRect: CGRect(
+                    x: -restartSize.width * 0.5,
+                    y: -restartSize.height * 0.5,
+                    width: restartSize.width,
+                    height: restartSize.height
+                ),
+                cornerWidth: 24 * fontScale,
+                cornerHeight: 24 * fontScale,
+                transform: nil
+            )
+            restartButton.position = CGPoint(x: centerX, y: restartCenterY)
+            restartButton.fillColor = UIColor(hex: "635EE6")
+            restartButton.strokeColor = UIColor(hex: "B5BCFF").withAlphaComponent(0.23)
+            restartButton.lineWidth = 1.05
+
+            restartBase.path = CGPath(
+                roundedRect: CGRect(
+                    x: -restartSize.width * 0.5 + (8 * masterScaleX(for: size)),
+                    y: -restartSize.height * 0.5 - (12 * masterScaleY(for: size)),
+                    width: restartSize.width - (16 * masterScaleX(for: size)),
+                    height: restartSize.height + (10 * masterScaleY(for: size))
+                ),
+                cornerWidth: 21 * fontScale,
+                cornerHeight: 21 * fontScale,
+                transform: nil
+            )
+            restartHalo.path = CGPath(
+                roundedRect: CGRect(
+                    x: -restartSize.width * 0.5 - (4 * masterScaleX(for: size)),
+                    y: -restartSize.height * 0.5 - (3 * masterScaleY(for: size)),
+                    width: restartSize.width + (8 * masterScaleX(for: size)),
+                    height: restartSize.height + (6 * masterScaleY(for: size))
+                ),
+                cornerWidth: 27 * fontScale,
+                cornerHeight: 27 * fontScale,
+                transform: nil
+            )
+            restartInnerStroke.path = CGPath(
+                roundedRect: CGRect(
+                    x: -restartSize.width * 0.5 + (2 * masterScaleX(for: size)),
+                    y: -restartSize.height * 0.5 + (2 * masterScaleY(for: size)),
+                    width: restartSize.width - (4 * masterScaleX(for: size)),
+                    height: restartSize.height - (4 * masterScaleY(for: size))
+                ),
+                cornerWidth: 22 * fontScale,
+                cornerHeight: 22 * fontScale,
+                transform: nil
+            )
+            restartLabel.fontSize = 22 * fontScale
+            restartLabel.position = CGPoint(x: 0, y: 2.1 * fontScale)
+
+            // Keep the monument shell anchored to the live caption/detail stack.
+            let monumentFieldLeading: CGFloat = 118
+            let monumentFieldWidth: CGFloat = 204
+            let monumentFieldTopInset: CGFloat = isZeroScoreTerminal ? 28 : 24
+            let monumentFieldBottomInset: CGFloat = isWeakScoreTerminal ? 8 : 6
+            let monumentOuterHorizontalPad: CGFloat = isWeakScoreTerminal ? 62 : 58
+            let monumentOuterVerticalPad: CGFloat = isZeroScoreTerminal ? 66 : (isWeakScoreTerminal ? 62 : 56)
+            let monumentVeilLeading: CGFloat = 44
+            let monumentVeilWidth: CGFloat = 352
+            let monumentVeilTopInset: CGFloat = isWeakScoreTerminal ? 46 : 40
+            let monumentVeilBottomInset: CGFloat = hasSupportContent ? 84 : 72
+            let monumentFieldCornerRadius: CGFloat = 84
+            let monumentAuraCornerRadius: CGFloat = 182
+            let monumentVeilCornerRadius: CGFloat = 192
+            let monumentFieldTop = captionLabel.position.y + (monumentFieldTopInset * scaleY)
+            let monumentFieldBottom = detailLabel.position.y + (monumentFieldBottomInset * scaleY)
+            let monumentFieldRect = CGRect(
+                x: monumentFieldLeading * scaleX,
+                y: monumentFieldBottom,
+                width: monumentFieldWidth * scaleX,
+                height: monumentFieldTop - monumentFieldBottom
+            )
+            let monumentOuterRect = monumentFieldRect.insetBy(
+                dx: -(monumentOuterHorizontalPad * scaleX),
+                dy: -(monumentOuterVerticalPad * scaleY)
+            )
+            let monumentVeilTop = captionLabel.position.y + (monumentVeilTopInset * scaleY)
+            let monumentVeilBottom = detailLabel.position.y + (monumentVeilBottomInset * scaleY)
+            let monumentVeilRect = CGRect(
+                x: monumentVeilLeading * scaleX,
+                y: monumentVeilBottom,
+                width: monumentVeilWidth * scaleX,
+                height: monumentVeilTop - monumentVeilBottom
+            )
+
+            headingField.path = CGPath(
+                roundedRect: monumentFieldRect.offsetBy(dx: -monumentFieldRect.midX, dy: -monumentFieldRect.midY),
+                cornerWidth: monumentFieldCornerRadius * fontScale,
+                cornerHeight: monumentFieldCornerRadius * fontScale,
+                transform: nil
+            )
+            headingField.position = CGPoint(x: monumentFieldRect.midX, y: monumentFieldRect.midY)
+
+            monumentAura.path = CGPath(
+                roundedRect: monumentOuterRect.offsetBy(dx: -monumentOuterRect.midX, dy: -monumentOuterRect.midY),
+                cornerWidth: monumentAuraCornerRadius * fontScale,
+                cornerHeight: monumentAuraCornerRadius * fontScale,
+                transform: nil
+            )
+            monumentAura.position = CGPoint(x: monumentOuterRect.midX, y: monumentOuterRect.midY)
+
+            monumentVeil.path = CGPath(
+                roundedRect: monumentVeilRect.offsetBy(dx: -monumentVeilRect.midX, dy: -monumentVeilRect.midY),
+                cornerWidth: monumentVeilCornerRadius * fontScale,
+                cornerHeight: monumentVeilCornerRadius * fontScale,
+                transform: nil
+            )
+            monumentVeil.position = CGPoint(x: monumentVeilRect.midX, y: monumentVeilRect.midY)
+
+            monumentAura.fillColor = UIColor(hex: "070914").withAlphaComponent(isZeroScoreTerminal ? 0.088 : (isWeakScoreTerminal ? 0.080 : 0.072))
+            monumentVeil.fillColor = UIColor(hex: "060811").withAlphaComponent(isZeroScoreTerminal ? 0.74 : (isWeakScoreTerminal ? 0.70 : 0.66))
+
+            if isCompactHeight {
+                headingField.fillColor = UIColor.white.withAlphaComponent(isWeakScoreTerminal ? 0.0038 : 0.0026)
+            } else {
+                headingField.fillColor = UIColor.white.withAlphaComponent(isWeakScoreTerminal ? 0.0044 : 0.003)
+            }
+            headingField.strokeColor = .clear
         }
     }
 
@@ -863,15 +1203,15 @@ final class GameScene: SKScene {
 
         let halo = SKShapeNode(rect: boardRect.insetBy(dx: -12, dy: -16), cornerRadius: 36)
         halo.name = "board.halo"
-        halo.fillColor = UIColor(hex: "92A1FF").withAlphaComponent(0.024)
+        halo.fillColor = UIColor(hex: "070A14").withAlphaComponent(0.2)
         halo.strokeColor = .clear
         halo.zPosition = -4
         addChild(halo)
 
         let backdrop = SKShapeNode(rect: boardRect, cornerRadius: 30)
         backdrop.name = "board.backdrop"
-        backdrop.fillColor = UIColor(hex: "101020").withAlphaComponent(0.635)
-        backdrop.strokeColor = UIColor(hex: "A8B4FF").withAlphaComponent(0.072)
+        backdrop.fillColor = UIColor(hex: "0B0F1E").withAlphaComponent(0.635)
+        backdrop.strokeColor = UIColor(hex: "7D8CBE").withAlphaComponent(0.1)
         backdrop.lineWidth = 1
         backdrop.zPosition = -3
         addChild(backdrop)
@@ -879,7 +1219,7 @@ final class GameScene: SKScene {
         let frame = SKShapeNode(rect: boardRect.insetBy(dx: 8, dy: 8), cornerRadius: 24)
         frame.name = "board.frame"
         frame.fillColor = UIColor.clear
-        frame.strokeColor = UIColor.white.withAlphaComponent(0.048)
+        frame.strokeColor = UIColor(hex: "7D8CBE").withAlphaComponent(0.1)
         frame.lineWidth = 1
         frame.zPosition = -2
         addChild(frame)
@@ -896,7 +1236,7 @@ final class GameScene: SKScene {
                 highlight.position = CGPoint(x: 0, y: HexGeometry.radius * 0.18)
                 highlight.zPosition = 1
                 node.addChild(highlight)
-                applyEmptyCellStyle(node)
+                applyEmptyCellAppearance(for: coord, node: node)
                 node.position = HexGeometry.pixelCenter(for: coord, origin: gridOrigin)
                 addChild(node)
                 cellNodes[coord] = node
@@ -1066,26 +1406,27 @@ final class GameScene: SKScene {
 
     private func updateOverlayResult() {
         let score = engine.scoreEngine.score
-        let editorialCharacter = Self.editorialRunCharacter(
-            maxCombo: engine.maxCombo,
-            didClearAny: engine.didClearAny,
-            hasUsedContinue: engine.hasUsedContinue
-        )
         let caption: String
         let badge: String
         let detail: String
         let progress: String
         if engine.isDailyChallenge {
+            let dayID = engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
+            let ritualIdentity = DailyRitualIdentity.identity(for: dayID)
             caption = VexloStrings.Overlay.dailyComplete
             let completion = lastDailyCompletion
             badge = completion?.isNewBestToday == true ? VexloStrings.Overlay.bestToday : ""
-            detail = editorialCharacter
-            progress = VexloStrings.Overlay.streak(
-                completion?.streakCount ?? DailyChallengeService.shared.previewStreakIfCompleted(
-                    dayID: engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
-                )
+            detail = ritualIdentity.resultDetailLine
+            let streakCount = completion?.streakCount ?? DailyChallengeService.shared.previewStreakIfCompleted(
+                dayID: dayID
             )
+            progress = streakCount > 0 ? ritualIdentity.continuityLine(streakCount: streakCount) : ""
         } else {
+            let editorialCharacter = Self.editorialRunCharacter(
+                maxCombo: engine.maxCombo,
+                didClearAny: engine.didClearAny,
+                hasUsedContinue: engine.hasUsedContinue
+            )
             caption = VexloStrings.Overlay.gameOver
             let completedRuns = GameCenterService.shared.completedRunCount
             progress = Self.quietNearMissMasteryLine(
@@ -1175,6 +1516,7 @@ final class GameScene: SKScene {
         syncScores()
         syncUtilitySurface()
         resultOverlay.present(prefersReducedMotion: prefersReducedMotion)
+        animateTerminalBoardWithdrawalIfNeeded()
         if !LaunchSupport.shared.isCaptureMode {
             if !prefersReducedMotion {
                 HapticsService.shared.playInvalid()
@@ -1207,6 +1549,46 @@ final class GameScene: SKScene {
             .scale(to: emphasis, duration: 0.14),
             .fadeAlpha(to: 1.0, duration: 0.14)
         ]))
+    }
+
+    private func animateTerminalBoardWithdrawalIfNeeded() {
+        guard terminalOverlayOwnsResultContext, !prefersReducedMotion else { return }
+
+        if let halo = childNode(withName: "board.halo") as? SKShapeNode {
+            halo.removeAction(forKey: "result.withdraw")
+            halo.alpha = 0.72
+            halo.setScale(1.024)
+            halo.run(
+                .group([
+                    .fadeAlpha(to: 1.0, duration: 0.24),
+                    .scale(to: 1.0, duration: 0.24)
+                ]),
+                withKey: "result.withdraw"
+            )
+        }
+        if let backdrop = childNode(withName: "board.backdrop") as? SKShapeNode {
+            backdrop.removeAction(forKey: "result.withdraw")
+            backdrop.alpha = 0.84
+            backdrop.run(.fadeAlpha(to: 1.0, duration: 0.26), withKey: "result.withdraw")
+        }
+        if let frame = childNode(withName: "board.frame") as? SKShapeNode {
+            frame.removeAction(forKey: "result.withdraw")
+            frame.alpha = 0.64
+            frame.run(.fadeAlpha(to: 1.0, duration: 0.26), withKey: "result.withdraw")
+        }
+        for node in cellNodes.values {
+            let targetAlpha = node.alpha
+            node.removeAction(forKey: "result.withdraw")
+            node.alpha = min(1.0, targetAlpha * 1.28)
+            node.setScale(1.008)
+            node.run(
+                .group([
+                    .fadeAlpha(to: targetAlpha, duration: 0.28),
+                    .scale(to: 1.0, duration: 0.28)
+                ]),
+                withKey: "result.withdraw"
+            )
+        }
     }
 
     private func animatePlacement(coords: [HexCoordinate], color: UIColor, completion: @escaping () -> Void) {
@@ -1321,7 +1703,12 @@ final class GameScene: SKScene {
         }
     }
 
+    private func refreshBoardPressureSnapshot() {
+        boardPressureSnapshot = engine.boardPressureSnapshot()
+    }
+
     private func syncBoard() {
+        refreshBoardPressureSnapshot()
         for col in 0..<cols {
             for row in 0..<rows {
                 let coord = HexCoordinate(col, row)
@@ -1329,7 +1716,7 @@ final class GameScene: SKScene {
                 if let color = engine.board.color(at: coord) {
                     applyFilledCellStyle(node, color: color)
                 } else {
-                    applyEmptyCellStyle(node)
+                    applyEmptyCellAppearance(for: coord, node: node)
                 }
             }
         }
@@ -1643,19 +2030,13 @@ final class GameScene: SKScene {
         modeLabel.isHidden = false
         if engine.isDailyChallenge {
             let status = DailyChallengeService.shared.currentStatus()
-            let weekdayTitle = DailyChallengeService.shared.weekdayTitle(for: status.dayID)
+            let ritualIdentity = DailyRitualIdentity.identity(for: status.dayID)
             if LaunchSupport.shared.isCaptureMode {
                 modeLabel.text = VexloStrings.HUD.todaysChallenge
                 modeLabel.alpha = isPublicEditorialCapture ? 0.66 : 0.58
-            } else if !weekdayTitle.isEmpty {
-                modeLabel.text = VexloStrings.HUD.dailyBoard(weekday: weekdayTitle)
-                modeLabel.alpha = isOpeningState ? 0.6 : 0.64
-            } else if status.streakCount > 0 && !isOpeningState {
-                modeLabel.text = VexloStrings.HUD.todaysChallenge(streak: status.streakCount)
-                modeLabel.alpha = 0.6
             } else {
-                modeLabel.text = VexloStrings.HUD.todaysChallenge
-                modeLabel.alpha = 0.56
+                modeLabel.text = ritualIdentity.ritualHeadline
+                modeLabel.alpha = isOpeningState ? 0.6 : 0.64
             }
         } else if !LaunchSupport.shared.isCaptureMode {
             let status = DailyChallengeService.shared.currentStatus()
@@ -1758,8 +2139,11 @@ final class GameScene: SKScene {
         }
         if let halo = childNode(withName: "board.halo") as? SKShapeNode {
             let haloAlpha: CGFloat
+            let isWeakScoreTerminal = terminalOverlayOwnsResultContext && !engine.isDailyChallenge && engine.scoreEngine.score < 10
             if terminalOverlayOwnsResultContext {
-                haloAlpha = size.height < 760 ? (isDaily ? 0.009 : 0.011) : (isDaily ? 0.011 : 0.013)
+                haloAlpha = isWeakScoreTerminal
+                    ? (size.height < 760 ? 0.002 : 0.003)
+                    : (size.height < 760 ? (isDaily ? 0.0026 : 0.0034) : (isDaily ? 0.0038 : 0.0048))
             } else {
                 haloAlpha = isPlacementHintSurfaceVisible ? 0.038 :
                     (isOpeningState ? (isDaily ? 0.03 : 0.034) : (isDaily ? 0.021 : (isNormalMidgame ? 0.028 : 0.024)))
@@ -1786,9 +2170,12 @@ final class GameScene: SKScene {
         if let backdrop = childNode(withName: "board.backdrop") as? SKShapeNode {
             let fillAlpha: CGFloat
             let strokeAlpha: CGFloat
+            let isWeakScoreTerminal = terminalOverlayOwnsResultContext && !engine.isDailyChallenge && engine.scoreEngine.score < 10
             if terminalOverlayOwnsResultContext {
-                fillAlpha = size.height < 760 ? 0.785 : 0.758
-                strokeAlpha = size.height < 760 ? (isDaily ? 0.036 : 0.03) : (isDaily ? 0.044 : 0.036)
+                fillAlpha = isWeakScoreTerminal ? (size.height < 760 ? 0.888 : 0.864) : (size.height < 760 ? 0.870 : 0.842)
+                strokeAlpha = isWeakScoreTerminal
+                    ? (size.height < 760 ? 0.007 : 0.010)
+                    : (size.height < 760 ? (isDaily ? 0.011 : 0.010) : (isDaily ? 0.016 : 0.013))
             } else {
                 fillAlpha = isPlacementHintSurfaceVisible ? 0.675 : (isOpeningState ? (isDaily ? 0.648 : 0.67) : (isDaily ? 0.626 : (isNormalMidgame ? 0.645 : 0.635)))
                 strokeAlpha = isPlacementHintSurfaceVisible ? 0.102 :
@@ -1799,8 +2186,9 @@ final class GameScene: SKScene {
         }
         if let frame = childNode(withName: "board.frame") as? SKShapeNode {
             let frameAlpha: CGFloat
+            let isWeakScoreTerminal = terminalOverlayOwnsResultContext && !engine.isDailyChallenge && engine.scoreEngine.score < 10
             if terminalOverlayOwnsResultContext {
-                frameAlpha = size.height < 760 ? 0.021 : 0.026
+                frameAlpha = isWeakScoreTerminal ? (size.height < 760 ? 0.0028 : 0.0046) : (size.height < 760 ? 0.0048 : 0.0072)
             } else {
                 frameAlpha = isPlacementHintSurfaceVisible ? 0.072 : (isOpeningState ? (isDaily ? 0.078 : 0.064) : (isDaily ? 0.062 : (isNormalMidgame ? 0.054 : 0.048)))
             }
@@ -2278,11 +2666,19 @@ final class GameScene: SKScene {
         guard engine.isGameOver,
               !LaunchSupport.shared.isInternalCapture else { return }
         AudioService.shared.play(.shareTap)
+        let dailyRitualHeadline: String?
+        if engine.isDailyChallenge {
+            let dayID = engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
+            dailyRitualHeadline = DailyRitualIdentity.identity(for: dayID).shareCardHeadline
+        } else {
+            dailyRitualHeadline = nil
+        }
         let payload = ResultSharePayload(
             mode: engine.isDailyChallenge ? .daily : .normal,
             score: engine.scoreEngine.score,
             badge: overlayBadgeLabel.text?.isEmpty == false ? overlayBadgeLabel.text : nil,
-            detail: overlayDetailLabel.text?.isEmpty == false ? overlayDetailLabel.text : nil
+            detail: overlayDetailLabel.text?.isEmpty == false ? overlayDetailLabel.text : nil,
+            dailyRitualHeadline: dailyRitualHeadline
         )
         presentCenteredActivitySheet(items: ResultShareService.activityItems(for: payload))
     }
@@ -2609,7 +3005,7 @@ final class GameScene: SKScene {
         let committed = engine.place(piece, at: anchor, slotIndex: dragSlotIndex)
 
         OnboardingService.shared.markPlacementLearned()
-        HapticsService.shared.playPlace()
+        Self.playCommitPlaceHaptic(Self.moveQualityCommitResponse(for: committed).commitHaptic)
         AudioService.shared.play(.validPlace)
         handlePostPlacementFeedback(
             placedCoords: committed.placedCoordinates,
@@ -2644,11 +3040,11 @@ final class GameScene: SKScene {
             return
         }
         let previewProfile = Self.dragPreviewProfile(for: resolution)
-        let emphasizesOpeningRelief = Self.shouldEmphasizeOpeningReliefPlacement(
+        let emphasizesOpeningRelief = Self.moveQualityDragResponse(
             evaluation: evaluation,
             previewProfile: previewProfile,
             isOpeningState: engine.placementEvaluationContext().isOpeningState
-        )
+        ).emphasizesOpeningReliefOnDrag
         let clearCells = Set(resolution.clearedCellCoordinates)
         let nextCells = Set(coords).union(clearCells)
         for coord in dragHighlightedCells.subtracting(nextCells) {
@@ -2719,7 +3115,7 @@ final class GameScene: SKScene {
         if let color = engine.board.color(at: coord) {
             applyFilledCellStyle(node, color: color)
         } else {
-            applyEmptyCellStyle(node)
+            applyEmptyCellAppearance(for: coord, node: node)
         }
     }
 
@@ -2761,9 +3157,10 @@ final class GameScene: SKScene {
                 SKAction.fadeAlpha(to: 0.0, duration: 0.13)
             ])
             let restore = SKAction.run { [weak self] in
+                guard let self else { return }
                 node.setScale(1.0)
                 node.alpha = 1.0
-                self?.applyEmptyCellStyle(node)
+                self.applyEmptyCellAppearance(for: coord, node: node)
             }
             node.run(SKAction.sequence([wait, flash, settle, shatter, restore]))
         }
@@ -2946,19 +3343,43 @@ final class GameScene: SKScene {
         clearedCellCount > 0 && clearedLineCount <= 1 && !chainAdvanced && shouldShowClearHint
     }
 
+    private func applyEmptyCellAppearance(for coord: HexCoordinate, node: SKShapeNode) {
+        applyEmptyCellStyle(node)
+        let isOpeningState = engine.scoreEngine.score == 0 && !engine.didClearAny
+        guard Self.shouldApplyBoardWhisper(
+            isOpeningState: isOpeningState,
+            isTerminal: terminalOverlayOwnsResultContext
+        ),
+        let whisper = boardPressureSnapshot?.cellWhisper[coord] else { return }
+        Self.applyBoardWhisper(
+            to: emptyCellMaterialNode(in: node),
+            strokeOn: node,
+            whisper: whisper
+        )
+    }
+
     private func applyEmptyCellStyle(_ node: SKShapeNode) {
         let isOpeningState = engine.scoreEngine.score == 0 && !engine.didClearAny
         let isTerminal = terminalOverlayOwnsResultContext
         let isCompactTerminal = isTerminal && size.height < 760
-        node.fillColor = UIColor(white: 1, alpha: isTerminal ? (isCompactTerminal ? 0.026 : 0.032) : (isOpeningState ? 0.058 : 0.049))
-        node.strokeColor = UIColor(white: 1, alpha: isTerminal ? (isCompactTerminal ? 0.064 : 0.076) : (isOpeningState ? 0.136 : 0.118))
+        let isWeakScoreTerminal = isTerminal && !engine.isDailyChallenge && engine.scoreEngine.score < 10
+        node.fillColor = UIColor.white.withAlphaComponent(
+            isTerminal ? (isWeakScoreTerminal ? 0.016 : 0.02) : (isOpeningState ? 0.058 : 0.049)
+        )
+        node.strokeColor = UIColor(hex: "B9C3E6").withAlphaComponent(
+            isTerminal ? (isWeakScoreTerminal ? 0.068 : 0.094) : (isOpeningState ? 0.136 : 0.118)
+        )
         node.lineWidth = 0.9
-        node.alpha = isTerminal ? (isCompactTerminal ? 0.76 : 0.8) : 1.0
+        node.alpha = isTerminal ? (isWeakScoreTerminal ? (isCompactTerminal ? 0.38 : 0.44) : (isCompactTerminal ? 0.46 : 0.52)) : 1.0
         node.setScale(1.0)
         let material = emptyCellMaterialNode(in: node)
         material.isHidden = false
         material.fillColor = UIColor(hex: engine.isDailyChallenge ? "F8FBFF" : "A8B4FF").withAlphaComponent(
-            isTerminal ? (isCompactTerminal ? (engine.isDailyChallenge ? 0.008 : 0.007) : (engine.isDailyChallenge ? 0.01 : 0.009)) :
+            isTerminal ? (
+                isWeakScoreTerminal
+                    ? (isCompactTerminal ? (engine.isDailyChallenge ? 0.001 : 0.0008) : (engine.isDailyChallenge ? 0.0014 : 0.0011))
+                    : (isCompactTerminal ? (engine.isDailyChallenge ? 0.0015 : 0.0012) : (engine.isDailyChallenge ? 0.002 : 0.0016))
+            ) :
                 (isOpeningState ? (engine.isDailyChallenge ? 0.026 : 0.02) : (engine.isDailyChallenge ? 0.018 : 0.014))
         )
         material.strokeColor = UIColor.clear
@@ -2968,20 +3389,29 @@ final class GameScene: SKScene {
     private func applyFilledCellStyle(_ node: SKShapeNode, color: UIColor) {
         let isTerminal = terminalOverlayOwnsResultContext
         let isCompactTerminal = isTerminal && size.height < 760
+        let isWeakScoreTerminal = isTerminal && !engine.isDailyChallenge && engine.scoreEngine.score < 10
         node.childNode(withName: "board.emptyMaterial")?.isHidden = true
         applyPieceSurfaceStyle(node, color: color, emphasis: .board)
         if isTerminal {
-            node.alpha = isCompactTerminal ? 0.62 : 0.68
-            node.strokeColor = UIColor.white.withAlphaComponent(isCompactTerminal ? 0.12 : 0.14)
+            node.alpha = isWeakScoreTerminal ? (isCompactTerminal ? 0.13 : 0.17) : (isCompactTerminal ? 0.16 : 0.20)
+            node.strokeColor = UIColor.white.withAlphaComponent(
+                isWeakScoreTerminal ? (isCompactTerminal ? 0.022 : 0.032) : (isCompactTerminal ? 0.036 : 0.05)
+            )
             node.lineWidth = 1.0
         }
         if let highlight = node.childNode(withName: "fillHighlight") as? SKShapeNode {
             highlight.isHidden = false
-            highlight.fillColor = UIColor(white: 1, alpha: isTerminal ? (isCompactTerminal ? 0.052 : 0.064) : 0.148)
+            highlight.fillColor = UIColor(
+                white: 1,
+                alpha: isTerminal ? (isWeakScoreTerminal ? (isCompactTerminal ? 0.005 : 0.008) : (isCompactTerminal ? 0.009 : 0.014)) : 0.148
+            )
         } else {
             let highlight = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius * 0.68))
             highlight.name = "fillHighlight"
-            highlight.fillColor = UIColor(white: 1, alpha: isTerminal ? (isCompactTerminal ? 0.052 : 0.064) : 0.148)
+            highlight.fillColor = UIColor(
+                white: 1,
+                alpha: isTerminal ? (isWeakScoreTerminal ? (isCompactTerminal ? 0.005 : 0.008) : (isCompactTerminal ? 0.009 : 0.014)) : 0.148
+            )
             highlight.strokeColor = .clear
             highlight.lineWidth = 0
             highlight.position = CGPoint(x: 0, y: HexGeometry.radius * 0.15)

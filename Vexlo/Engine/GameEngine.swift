@@ -84,11 +84,52 @@ final class GameEngine: ObservableObject {
         previewPlacementBundle(piece, at: anchor).resolution
     }
 
+    /// Gentle opening tray / relief emphasis until the first clear of the run.
+    var isGentleOpeningPhase: Bool {
+        scoreEngine.score == 0 && !didClearAny
+    }
+
+    /// Structural board-pressure and whisper reads once the committed board is no longer empty.
+    var boardStructuralSemanticsActive: Bool {
+        occupiedCellCount() > 0
+    }
+
     func placementEvaluationContext() -> PlacementEvaluationContext {
         PlacementEvaluationContext(
             occupiedCellCount: occupiedCellCount(),
-            isOpeningState: scoreEngine.score == 0 && !didClearAny
+            isOpeningState: isGentleOpeningPhase
         )
+    }
+
+    func boardPressureContext() -> BoardPressureContext {
+        BoardPressureContext(
+            occupiedCellCount: occupiedCellCount(),
+            freezeStructuralSemantics: !boardStructuralSemanticsActive,
+            cols: board.cols,
+            rows: board.rows
+        )
+    }
+
+    func boardPressureSnapshot() -> BoardPressureSnapshot {
+        BoardPressure.evaluate(board: board, context: boardPressureContext())
+    }
+
+    /// When exactly one tray piece can clear on some legal anchor during gentle opening.
+    func openingTraySoleClearCapableSlotIndex() -> Int? {
+        guard isGentleOpeningPhase else { return nil }
+        var clearCapableSlots: [Int] = []
+        for index in 0..<slotCount {
+            guard let piece = pieces[index], hasClearCapablePlacement(piece) else { continue }
+            clearCapableSlots.append(index)
+        }
+        guard clearCapableSlots.count == 1 else { return nil }
+        return clearCapableSlots[0]
+    }
+
+    private func hasClearCapablePlacement(_ piece: HexPiece) -> Bool {
+        board.allCoordinates().contains { coordinate in
+            previewPlacement(piece, at: coordinate).clearedLineCount > 0
+        }
     }
 
     func previewPlacementBundle(_ piece: HexPiece, at anchor: HexCoordinate) -> PlacementPreview {

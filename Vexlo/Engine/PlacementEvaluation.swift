@@ -42,12 +42,22 @@ struct PlacementEvaluation: Equatable {
         placementCoordinates: [HexCoordinate],
         occupiedCoordinates: Set<HexCoordinate>
     ) -> Int {
+        reliefContactCoordinates(
+            placementCoordinates: placementCoordinates,
+            occupiedCoordinates: occupiedCoordinates
+        ).count
+    }
+
+    static func reliefContactCoordinates(
+        placementCoordinates: [HexCoordinate],
+        occupiedCoordinates: Set<HexCoordinate>
+    ) -> Set<HexCoordinate> {
         Set(
             placementCoordinates.flatMap { coordinate in
                 axialNeighborCoordinates(for: coordinate)
                     .filter(occupiedCoordinates.contains)
             }
-        ).count
+        )
     }
 
     private static func tier(

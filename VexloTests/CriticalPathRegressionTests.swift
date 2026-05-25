@@ -94,8 +94,283 @@ struct CriticalPathRegressionTests {
 
         #expect(batchOffsetSignatures(normalOpening) == ["0:0|1:0", "0:0|1:0|1:1", "0:0|0:1|0:2"])
         #expect(batchOffsetSignatures(standardOpening) == ["0:0|0:1|1:0", "0:0|1:0", "0:0"])
-        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|1:0", "0:0|0:1", "0:0|1:0|1:1"])
+        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
         #expect(batchOffsetSignatures(standardRefill) == ["0:0|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
+    }
+
+    @Test
+    func normalModeEarlySessionOpeningBiasNearLineAffordanceOverBalancedOpening() {
+        var normalHits = 0
+        var balancedHits = 0
+        for seed in UInt64(0)..<64 {
+            var normalGenerator = PieceFactory.SeededGenerator(seed: seed)
+            var normalMemory = PieceFactory.GenerationMemory()
+            let normalOpening = PieceFactory.openingBatch(
+                count: 3,
+                memory: &normalMemory,
+                using: &normalGenerator
+            )
+            if earlySessionTrayHasNearLineAffordance(normalOpening) {
+                normalHits += 1
+            }
+
+            var balancedGenerator = PieceFactory.SeededGenerator(seed: seed)
+            var balancedMemory = PieceFactory.GenerationMemory()
+            let balancedOpening = PieceFactory.openingBatch(
+                count: 3,
+                memory: &balancedMemory,
+                using: &balancedGenerator,
+                boardCharacter: .balanced
+            )
+            if earlySessionTrayHasNearLineAffordance(balancedOpening) {
+                balancedHits += 1
+            }
+        }
+        #expect(normalHits >= balancedHits)
+        #expect(normalHits >= 50)
+    }
+
+    @Test
+    func normalModeEarlySessionRefillBiasNearLineAffordanceAtLowOccupancy() {
+        var refillHits = 0
+        for seed in UInt64(0)..<64 {
+            var generator = PieceFactory.SeededGenerator(seed: seed)
+            var memory = PieceFactory.GenerationMemory()
+            _ = PieceFactory.openingBatch(count: 3, memory: &memory, using: &generator)
+            let refill = PieceFactory.randomBatch(
+                count: 3,
+                occupiedCellCount: 5,
+                memory: &memory,
+                using: &generator
+            )
+            if earlySessionTrayHasNearLineAffordance(refill) {
+                refillHits += 1
+            }
+        }
+        #expect(refillHits >= 48)
+    }
+
+    @Test
+    func pieceSpecificDragHighlightOmitsNonLocalNearLineEmpties() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<5 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let resolution = board.placementResolution(for: piece, at: HexCoordinate(5, 0))
+        let evaluation = try #require(
+            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(5, 0))
+        )
+        #expect(evaluation.tier == .survival)
+        let occupied = Set(board.snapshot.cells.map(\.coordinate))
+        let highlights = PieceSpecificDragHighlight.coordinates(
+            resolution: resolution,
+            evaluation: evaluation,
+            occupiedCoordinates: occupied,
+            includesClearConsequences: false,
+            includeBoardReliefContacts: false
+        )
+        #expect(highlights == Set(resolution.placedCoordinates))
+        #expect(!highlights.contains(HexCoordinate(6, 0)))
+    }
+
+    @Test
+    func pieceSpecificDragHighlightAddsReliefContactsOnlyForReliefTier() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        board.place(color: fill, at: HexCoordinate(2, 2))
+        board.place(color: fill, at: HexCoordinate(3, 2))
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let anchor = HexCoordinate(1, 2)
+        let resolution = board.placementResolution(for: piece, at: anchor)
+        let evaluation = try #require(placementEvaluation(on: board, piece: piece, anchor: anchor))
+        #expect(evaluation.tier == .relief)
+        let occupied = Set(board.snapshot.cells.map(\.coordinate))
+        let highlights = PieceSpecificDragHighlight.coordinates(
+            resolution: resolution,
+            evaluation: evaluation,
+            occupiedCoordinates: occupied,
+            includesClearConsequences: true,
+            includeBoardReliefContacts: true
+        )
+        let reliefContacts = PlacementEvaluation.reliefContactCoordinates(
+            placementCoordinates: resolution.placedCoordinates,
+            occupiedCoordinates: occupied
+        )
+        #expect(!reliefContacts.isEmpty)
+        #expect(highlights == Set(resolution.placedCoordinates).union(reliefContacts))
+    }
+
+    @Test
+    func pieceSpecificDragHighlightOmitsBoardReliefContactsDuringGentleOpening() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        board.place(color: fill, at: HexCoordinate(2, 2))
+        board.place(color: fill, at: HexCoordinate(3, 2))
+        let piece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let anchor = HexCoordinate(1, 2)
+        let resolution = board.placementResolution(for: piece, at: anchor)
+        let evaluation = try #require(placementEvaluation(on: board, piece: piece, anchor: anchor))
+        #expect(evaluation.tier == .relief)
+        let occupied = Set(board.snapshot.cells.map(\.coordinate))
+        let highlights = PieceSpecificDragHighlight.coordinates(
+            resolution: resolution,
+            evaluation: evaluation,
+            occupiedCoordinates: occupied,
+            includesClearConsequences: false,
+            includeBoardReliefContacts: false
+        )
+        #expect(highlights == Set(resolution.placedCoordinates))
+        #expect(!highlights.contains(HexCoordinate(2, 2)))
+    }
+
+    @Test
+    func runThresholdSurfacePhasesAndCeremonyGating() {
+        #expect(
+            RunThresholdSurface.phase(isDailyChallenge: false, score: 0, didClearAny: false)
+                == .preThreshold
+        )
+        #expect(
+            RunThresholdSurface.phase(isDailyChallenge: false, score: 12, didClearAny: true)
+                == .postThreshold
+        )
+        #expect(
+            RunThresholdSurface.phase(isDailyChallenge: true, score: 0, didClearAny: false)
+                == .postThreshold
+        )
+        #expect(RunThresholdSurface.isThresholdCrossing(previousScore: 0, newScore: 70, clearedCellCount: 7))
+        #expect(
+            RunThresholdSurface.shouldPresentThresholdCeremony(
+                isDailyChallenge: false,
+                isCaptureMode: false,
+                isThresholdCrossing: true,
+                hasPresentedCeremony: false
+            )
+        )
+        #expect(
+            !RunThresholdSurface.includesClearConsequencesInDragHighlight(for: .preThreshold)
+        )
+        #expect(
+            RunThresholdSurface.includesClearConsequencesInDragHighlight(for: .postThreshold)
+        )
+        #expect(
+            GameScene.footprintDragPreviewProfile(
+                previewProfile: .clearPlacement,
+                includesClearConsequences: false
+            ) == .survivalPlacement
+        )
+    }
+
+    @Test
+    func gameEngineOpeningTraySoleClearCapableSlotIndexIsBinary() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let clearPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let filler = HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)], color: UIColor(hex: "6A8CFA"))
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: Set(engineOccupiedCoordinates(excluding: board.snapshot.cells.map(\.coordinate))),
+            tray: [clearPiece, filler, filler]
+        )
+        #expect(engine.isGentleOpeningPhase)
+        #expect(engine.openingTraySoleClearCapableSlotIndex() == 0)
+    }
+
+    @Test
+    func gameEngineOpeningTraySoleClearCapableSlotIndexNilWhenAmbiguous() throws {
+        var board = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            board.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let clearPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let engine = makeEngineForPlacementParity(
+            emptyCoordinates: Set(engineOccupiedCoordinates(excluding: board.snapshot.cells.map(\.coordinate))),
+            tray: [clearPiece, clearPiece, clearPiece]
+        )
+        #expect(engine.isGentleOpeningPhase)
+        #expect(engine.openingTraySoleClearCapableSlotIndex() == nil)
+    }
+
+    @Test
+    func gameEngineOpeningTraySoleClearCapableSlotIndexNilAfterGentleOpeningEnds() throws {
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        var empty = Set(engineOccupiedCoordinates(excluding: []))
+        for col in 0..<7 where col != 3 {
+            empty.remove(HexCoordinate(col, 0))
+        }
+        let scored = makeEngineForPlacementParity(emptyCoordinates: empty, tray: [piece])
+        _ = scored.place(piece, at: HexCoordinate(3, 0), slotIndex: 0)
+        #expect(!scored.isGentleOpeningPhase)
+        #expect(scored.openingTraySoleClearCapableSlotIndex() == nil)
+    }
+
+    @Test
+    func dragPreviewSuppressesMaskingChildLayersForVisibleParentStyling() throws {
+        let node = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius - 1))
+        let emptyHighlight = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius * 0.72))
+        emptyHighlight.name = "highlight"
+        emptyHighlight.isHidden = false
+        node.addChild(emptyHighlight)
+        let fillHighlight = SKShapeNode(path: HexGeometry.hexPath(radius: HexGeometry.radius * 0.68))
+        fillHighlight.name = "fillHighlight"
+        fillHighlight.isHidden = false
+        node.addChild(fillHighlight)
+
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.suppressDragPreviewMaskingLayers(on: node)
+        #expect(emptyHighlight.isHidden)
+        #expect(fillHighlight.isHidden)
+
+        node.fillColor = UIColor(hex: "C5F4E4").withAlphaComponent(0.32)
+        #expect(node.fillColor.cgColor.alpha > 0.2)
+
+        let coord = HexCoordinate(0, 0)
+        scene.testingRestoreEmptyBoardCellAppearance(at: coord, node: node)
+        #expect(emptyHighlight.isHidden == false)
+        #expect(node.childNode(withName: "fillHighlight")?.isHidden == true)
+    }
+
+    @Test
+    func gameSceneWiresPieceSpecificDragContractOnMainPaths() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(gameSceneSource.contains("RunThresholdSurface"))
+        #expect(gameSceneSource.contains("animateLineClear"))
+        #expect(gameSceneSource.contains("applyThresholdScoreAwakening"))
+        #expect(gameSceneSource.contains("hasPresentedRunThresholdCeremony"))
+        #expect(gameSceneSource.contains("firstClearRunOpen"))
+        #expect(!gameSceneSource.contains("presentNormalFirstClearBeatIfNeeded"))
+        #expect(!gameSceneSource.contains("presentNormalFirstClearModeLabelTransitionIfNeeded"))
+        #expect(!gameSceneSource.contains("showEventCue(Self.normalFirstClearEventCueText"))
+        #expect(gameSceneSource.contains("openingTraySoleClearCapableSlotIndex()"))
+        #expect(gameSceneSource.contains("PieceSpecificDragHighlight.coordinates"))
+        #expect(gameSceneSource.contains("includeBoardReliefContacts"))
+        #expect(gameSceneSource.contains("highlight.isHidden = false"))
+        #expect(gameSceneSource.contains("suppressDragPreviewMaskingLayers(on:"))
+        #expect(gameSceneSource.contains("dragPreviewProfile"))
+        #expect(gameSceneSource.contains("moveQualityDragResponse"))
+        #expect(gameSceneSource.contains("emphasizesOpeningReliefOnDrag"))
+        #expect(!gameSceneSource.contains("PlacementStructuralRead"))
+        #expect(!gameSceneSource.contains("nearLineFormingPlacement"))
+        #expect(!gameSceneSource.contains("traySlotAuthorities()"))
+        #expect(!gameSceneSource.contains("effectiveDragPreviewProfile"))
     }
 
     @Test
@@ -703,11 +978,15 @@ struct CriticalPathRegressionTests {
 
     @Test
     func firstMinuteMasteryCueCopyStaysStrategicAndCalm() {
+        #expect(VexloStrings.Onboarding.firstClearLine == "Line clear")
+        #expect(VexloStrings.Onboarding.firstClearRunOpen == "Structure cleared. Your run is scoring.")
+        #expect(VexloStrings.HUD.runOpen == "Run open")
         #expect(VexloStrings.Onboarding.completeLine == "Chain the next clear to lift score")
         #expect(VexloStrings.Onboarding.chainBuildsScore == "Consecutive clears build a chain")
         #expect(GameScene.comboCueText(for: 2) == "Combo ×2")
         #expect(GameScene.chainCueText(for: 2) == "Chain ×2")
     }
+
 
     @Test
     func comboAndChainEventSemanticsStayDistinctAndComboWinsPrecedence() {
@@ -936,7 +1215,7 @@ struct CriticalPathRegressionTests {
     @Test
     func emptyBoardEvaluatesAsCalmPressure() {
         let board = HexBoard(cols: 7, rows: 7)
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
 
         #expect(snapshot.band == .calm)
         #expect(snapshot.cellWhisper.count == 49)
@@ -944,17 +1223,25 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func openingStateSuppressesWarmLinePressureToCalm() {
+    func frozenEmptyBoardStructuralSemanticsStayCalm() {
+        let board = HexBoard(cols: 7, rows: 7)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: true)
+
+        #expect(snapshot.band == .calm)
+        #expect(snapshot.cellWhisper.count == 49)
+        #expect(snapshot.cellWhisper.values.allSatisfy { $0 == .calm })
+    }
+
+    @Test
+    func preClearOccupiedBoardEvaluatesWarmLinePressure() {
         var board = HexBoard(cols: 7, rows: 7)
         let fill = UIColor(hex: "7A74F7")
         for col in 0..<6 {
             board.place(color: fill, at: HexCoordinate(col, 0))
         }
 
-        let snapshot = boardPressure(on: board, isOpeningState: true)
-        #expect(snapshot.band == .calm)
-        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .calm)
-        #expect(snapshot.cellWhisper.values.allSatisfy { $0 == .calm })
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .taut)
     }
 
     @Test
@@ -965,7 +1252,7 @@ struct CriticalPathRegressionTests {
             board.place(color: fill, at: HexCoordinate(col, 0))
         }
 
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
         #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .taut)
     }
 
@@ -977,7 +1264,7 @@ struct CriticalPathRegressionTests {
             board.place(color: fill, at: HexCoordinate(0, row))
         }
 
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
         #expect(snapshot.cellWhisper[HexCoordinate(0, 6)] == .taut)
     }
 
@@ -989,7 +1276,7 @@ struct CriticalPathRegressionTests {
             board.place(color: fill, at: HexCoordinate(col, 0))
         }
 
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
         #expect(snapshot.cellWhisper[HexCoordinate(5, 0)] == .attentive)
         #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .attentive)
     }
@@ -1008,7 +1295,7 @@ struct CriticalPathRegressionTests {
             board.place(color: fill, at: coord)
         }
 
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
         #expect(snapshot.band == .taut)
         #expect(snapshot.cellWhisper[HexCoordinate(6, 6)] == .taut)
         #expect(snapshot.cellWhisper[HexCoordinate(4, 4)] == .taut)
@@ -1020,7 +1307,7 @@ struct CriticalPathRegressionTests {
         let fill = UIColor(hex: "7A74F7")
         board.place(color: fill, at: HexCoordinate(3, 3))
 
-        let snapshot = boardPressure(on: board, isOpeningState: false)
+        let snapshot = boardPressure(on: board, freezeStructuralSemantics: false)
         #expect(snapshot.cellWhisper[HexCoordinate(3, 3)] == nil)
         #expect(snapshot.cellWhisper.count == 48)
     }
@@ -1035,7 +1322,7 @@ struct CriticalPathRegressionTests {
         let before = board.snapshot
         let context = BoardPressureContext(
             occupiedCellCount: before.cells.count,
-            isOpeningState: false,
+            freezeStructuralSemantics: false,
             cols: board.cols,
             rows: board.rows
         )
@@ -1113,7 +1400,8 @@ struct CriticalPathRegressionTests {
         engine.startNormalRun(seed: 0xBEEF)
         let context = engine.boardPressureContext()
         #expect(context.occupiedCellCount == 0)
-        #expect(context.isOpeningState)
+        #expect(context.freezeStructuralSemantics)
+        #expect(!engine.boardStructuralSemanticsActive)
         #expect(context.cols == engine.board.cols)
         #expect(context.rows == engine.board.rows)
     }
@@ -1134,7 +1422,7 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func gameEngineBoardPressureOpeningStateSuppressesWarmLinePressure() {
+    func gameEnginePreClearOccupiedBoardPressureEvaluatesStructuralSemantics() {
         let emptyCoordinates = Set(
             engineOccupiedCoordinates(
                 excluding: (0..<6).map { HexCoordinate($0, 0) }
@@ -1144,10 +1432,11 @@ struct CriticalPathRegressionTests {
             emptyCoordinates: emptyCoordinates,
             tray: [HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))]
         )
-        #expect(engine.boardPressureContext().isOpeningState)
+        #expect(engine.isGentleOpeningPhase)
+        #expect(engine.boardStructuralSemanticsActive)
+        #expect(!engine.boardPressureContext().freezeStructuralSemantics)
         let snapshot = engine.boardPressureSnapshot()
-        #expect(snapshot.band == .calm)
-        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .calm)
+        #expect(snapshot.cellWhisper[HexCoordinate(6, 0)] == .taut)
     }
 
     @Test
@@ -1163,7 +1452,21 @@ struct CriticalPathRegressionTests {
         let placementContext = engine.placementEvaluationContext()
         let pressureContext = engine.boardPressureContext()
         #expect(pressureContext.occupiedCellCount == placementContext.occupiedCellCount)
-        #expect(pressureContext.isOpeningState == placementContext.isOpeningState)
+        #expect(placementContext.isOpeningState)
+        #expect(!pressureContext.freezeStructuralSemantics)
+    }
+
+    @Test
+    func gameEngineBoardStructuralSemanticsActivateAfterFirstPlacementWithoutClear() throws {
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let engine = GameEngine()
+        engine.startNormalRun(seed: 0xBEEF)
+        #expect(!engine.boardStructuralSemanticsActive)
+        #expect(engine.boardPressureContext().freezeStructuralSemantics)
+        _ = engine.place(piece, at: HexCoordinate(3, 3), slotIndex: 0)
+        #expect(engine.isGentleOpeningPhase)
+        #expect(engine.boardStructuralSemanticsActive)
+        #expect(!engine.boardPressureContext().freezeStructuralSemantics)
     }
 
     @Test
@@ -1344,7 +1647,7 @@ struct CriticalPathRegressionTests {
     @Test
     func dragPreviewProfilesDistinguishValidClearAndMultiClearPlacements() {
         #expect(GameScene.dragPreviewProfile(isValid: false, clearedLineCount: 0) == .invalidPlacement)
-        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 0) == .validPlacement)
+        #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 0) == .survivalPlacement)
         #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 1) == .clearPlacement)
         #expect(GameScene.dragPreviewProfile(isValid: true, clearedLineCount: 2) == .multiClearPlacement)
     }
@@ -1369,6 +1672,79 @@ struct CriticalPathRegressionTests {
         )
         #expect(GameScene.dragPreviewProfile(for: illegal) == .invalidPlacement)
         #expect(GameScene.dragPreviewProfile(for: multiClear) == .multiClearPlacement)
+    }
+
+    @Test
+    func tierAwareDragPreviewProfilesDistinguishSurvivalAndRelief() throws {
+        let sparseBoard = HexBoard(cols: 7, rows: 7)
+        let sparsePiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let survivalEvaluation = try #require(
+            placementEvaluation(on: sparseBoard, piece: sparsePiece, anchor: HexCoordinate(3, 3))
+        )
+        #expect(survivalEvaluation.tier == .survival)
+
+        var reliefBoard = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        reliefBoard.place(color: fill, at: HexCoordinate(2, 1))
+        reliefBoard.place(color: fill, at: HexCoordinate(3, 1))
+        let reliefPiece = HexPiece(
+            offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)],
+            color: UIColor(hex: "55A7F6")
+        )
+        let reliefEvaluation = try #require(
+            placementEvaluation(on: reliefBoard, piece: reliefPiece, anchor: HexCoordinate(2, 2))
+        )
+        #expect(reliefEvaluation.tier == .relief)
+
+        let survivalProfile = GameScene.dragPreviewProfile(
+            resolution: survivalEvaluation.resolution,
+            evaluation: survivalEvaluation
+        )
+        let reliefProfile = GameScene.dragPreviewProfile(
+            resolution: reliefEvaluation.resolution,
+            evaluation: reliefEvaluation
+        )
+        #expect(survivalProfile == .survivalPlacement)
+        #expect(reliefProfile == .reliefPlacement)
+        #expect(survivalProfile != reliefProfile)
+    }
+
+    @Test
+    func tierAwareDragPreviewProfilesMapConstructiveAndExpertClears() throws {
+        var constructiveBoard = HexBoard(cols: 7, rows: 7)
+        let fill = UIColor(hex: "7A74F7")
+        for col in 0..<7 where col != 3 {
+            constructiveBoard.place(color: fill, at: HexCoordinate(col, 0))
+        }
+        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
+        let constructiveEvaluation = try #require(
+            placementEvaluation(on: constructiveBoard, piece: piece, anchor: HexCoordinate(3, 0))
+        )
+        #expect(constructiveEvaluation.tier == .constructive)
+        #expect(
+            GameScene.dragPreviewProfile(
+                resolution: constructiveEvaluation.resolution,
+                evaluation: constructiveEvaluation
+            ) == .clearPlacement
+        )
+
+        var expertBoard = HexBoard(cols: 7, rows: 7)
+        for col in 0..<7 where col != 3 {
+            expertBoard.place(color: fill, at: HexCoordinate(col, 3))
+        }
+        for row in 0..<7 where row != 3 {
+            expertBoard.place(color: fill, at: HexCoordinate(3, row))
+        }
+        let expertEvaluation = try #require(
+            placementEvaluation(on: expertBoard, piece: piece, anchor: HexCoordinate(3, 3))
+        )
+        #expect(expertEvaluation.tier == .expert)
+        #expect(
+            GameScene.dragPreviewProfile(
+                resolution: expertEvaluation.resolution,
+                evaluation: expertEvaluation
+            ) == .multiClearPlacement
+        )
     }
 
     @Test
@@ -1410,7 +1786,9 @@ struct CriticalPathRegressionTests {
             contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene+MoveQualityResponse.swift"),
             encoding: .utf8
         )
+        #expect(gameSceneSource.contains("PieceSpecificDragHighlight.coordinates"))
         #expect(gameSceneSource.contains("moveQualityDragResponse"))
+        #expect(gameSceneSource.contains("evaluation: evaluation"))
         #expect(gameSceneSource.contains("playCommitPlaceHaptic"))
         #expect(!gameSceneSource.contains("evaluation.tier == .relief"))
         #expect(!moveQualityResponseSource.contains("BoardPressure"))
@@ -1423,11 +1801,11 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func gameSceneBoardWhisperSuppressedDuringOpeningAndTerminal() {
-        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: true, isTerminal: false))
-        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: false, isTerminal: true))
-        #expect(!GameScene.shouldApplyBoardWhisper(isOpeningState: true, isTerminal: true))
-        #expect(GameScene.shouldApplyBoardWhisper(isOpeningState: false, isTerminal: false))
+    func gameSceneBoardWhisperRequiresOccupiedBoardAndNonTerminal() {
+        #expect(!GameScene.shouldApplyBoardWhisper(boardStructuralSemanticsActive: false, isTerminal: false))
+        #expect(!GameScene.shouldApplyBoardWhisper(boardStructuralSemanticsActive: true, isTerminal: true))
+        #expect(!GameScene.shouldApplyBoardWhisper(boardStructuralSemanticsActive: false, isTerminal: true))
+        #expect(GameScene.shouldApplyBoardWhisper(boardStructuralSemanticsActive: true, isTerminal: false))
     }
 
     @Test
@@ -1445,7 +1823,7 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
-    func moveQualityResponsePolicyCommitHapticMapsConstructiveAndExpertClearsOnly() {
+    func moveQualityResponsePolicyCommitHapticMapsTierAwareNoClearAndClearLadder() {
         let constructive = MoveQualityResponseContext(
             moment: .commit,
             tier: nil,
@@ -1477,8 +1855,12 @@ struct CriticalPathRegressionTests {
 
         #expect(MoveQualityResponsePolicy.evaluate(constructive).commitHaptic == .constructive)
         #expect(MoveQualityResponsePolicy.evaluate(expert).commitHaptic == .expert)
-        #expect(MoveQualityResponsePolicy.evaluate(reliefNoClear).commitHaptic == .baseline)
-        #expect(MoveQualityResponsePolicy.evaluate(survivalNoClear).commitHaptic == .baseline)
+        #expect(MoveQualityResponsePolicy.evaluate(reliefNoClear).commitHaptic == .relief)
+        #expect(MoveQualityResponsePolicy.evaluate(survivalNoClear).commitHaptic == .survival)
+        #expect(
+            MoveQualityResponsePolicy.evaluate(reliefNoClear).commitHaptic
+                != MoveQualityResponsePolicy.evaluate(survivalNoClear).commitHaptic
+        )
     }
 
     @Test
@@ -1492,7 +1874,8 @@ struct CriticalPathRegressionTests {
             clearedCellCoordinates: (0..<7).map { HexCoordinate($0, 0) }
         )
         #expect(
-            GameScene.moveQualityCommitResponse(for: constructiveResolution).commitHaptic == .constructive
+            GameScene.moveQualityCommitResponse(for: constructiveResolution, tier: .constructive)
+                .commitHaptic == .constructive
         )
 
         let expertResolution = PlacementResolution(
@@ -1503,7 +1886,44 @@ struct CriticalPathRegressionTests {
             clearedColIndices: [3],
             clearedCellCoordinates: [HexCoordinate(3, 3)]
         )
-        #expect(GameScene.moveQualityCommitResponse(for: expertResolution).commitHaptic == .expert)
+        #expect(
+            GameScene.moveQualityCommitResponse(for: expertResolution, tier: .expert).commitHaptic == .expert
+        )
+
+        let survivalResolution = PlacementResolution(
+            anchor: HexCoordinate(3, 3),
+            placedCoordinates: [HexCoordinate(3, 3)],
+            isLegal: true,
+            clearedRowIndices: [],
+            clearedColIndices: [],
+            clearedCellCoordinates: []
+        )
+        #expect(
+            GameScene.moveQualityCommitResponse(for: survivalResolution, tier: .survival).commitHaptic == .survival
+        )
+        #expect(
+            GameScene.moveQualityCommitResponse(for: survivalResolution, tier: .relief).commitHaptic == .relief
+        )
+    }
+
+    @Test
+    func postClearHapticsUseTierAwareClearAndComboGateAlignedWithAudio() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        let hapticsSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/HapticsService.swift"),
+            encoding: .utf8
+        )
+        #expect(gameSceneSource.contains("playClear(clearedLineCount: clearedLineCount)"))
+        #expect(gameSceneSource.contains("if shouldPlayComboReward"))
+        #expect(gameSceneSource.contains("HapticsService.shared.playCombo()"))
+        #expect(hapticsSource.contains("func playClear(clearedLineCount: Int)"))
+        #expect(hapticsSource.contains("clearedLineCount >= 2"))
     }
 
     @Test
@@ -1591,17 +2011,14 @@ struct CriticalPathRegressionTests {
         )
         #expect(reliefEvaluation.tier == .relief)
         #expect(GameScene.shouldEmphasizeOpeningReliefPlacement(
-            evaluation: reliefEvaluation,
-            previewProfile: .validPlacement,
+            previewProfile: .reliefPlacement,
             isOpeningState: true
         ))
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            evaluation: reliefEvaluation,
-            previewProfile: .validPlacement,
+            previewProfile: .reliefPlacement,
             isOpeningState: false
         ))
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            evaluation: reliefEvaluation,
             previewProfile: .clearPlacement,
             isOpeningState: true
         ))
@@ -1613,8 +2030,7 @@ struct CriticalPathRegressionTests {
         )
         #expect(sparseEvaluation.tier == .survival)
         #expect(!GameScene.shouldEmphasizeOpeningReliefPlacement(
-            evaluation: sparseEvaluation,
-            previewProfile: .validPlacement,
+            previewProfile: .survivalPlacement,
             isOpeningState: true
         ))
     }
@@ -1796,6 +2212,260 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func asyncCompetitionPresentationMapsApprovedSlotsDeterministically() {
+        let dailyContext = AsyncCompetitionContext(
+            isDaily: true,
+            canPresentDailyActivity: true,
+            canPresentScoreChallenge: false,
+            score: 80,
+            earnedBestThisRun: false,
+            canPresentScoreChaseActivity: false,
+            isAuthenticated: true
+        )
+        let daily = AsyncCompetitionPresentation.resolve(context: dailyContext)
+        #expect(daily.gamesSlot == .dailyTable)
+        #expect(daily.gamesLabel == "Today's table")
+
+        let challengeContext = AsyncCompetitionContext(
+            isDaily: false,
+            canPresentDailyActivity: false,
+            canPresentScoreChallenge: true,
+            score: 120,
+            earnedBestThisRun: false,
+            canPresentScoreChaseActivity: true,
+            isAuthenticated: true
+        )
+        let challenge = AsyncCompetitionPresentation.resolve(context: challengeContext)
+        #expect(challenge.gamesSlot == .readingChallenge)
+        #expect(challenge.gamesLabel == "Send a reading challenge")
+
+        let shareContext = AsyncCompetitionContext(
+            isDaily: false,
+            canPresentDailyActivity: false,
+            canPresentScoreChallenge: false,
+            score: 200,
+            earnedBestThisRun: true,
+            canPresentScoreChaseActivity: true,
+            isAuthenticated: true
+        )
+        let share = AsyncCompetitionPresentation.resolve(context: shareContext)
+        #expect(share.gamesSlot == .shareRun)
+        #expect(share.gamesLabel == "Share this run")
+
+        let allTimeContext = AsyncCompetitionContext(
+            isDaily: false,
+            canPresentDailyActivity: false,
+            canPresentScoreChallenge: false,
+            score: 50,
+            earnedBestThisRun: false,
+            canPresentScoreChaseActivity: false,
+            isAuthenticated: true
+        )
+        let allTime = AsyncCompetitionPresentation.resolve(context: allTimeContext)
+        #expect(allTime.gamesSlot == .allTimeScores)
+        #expect(allTime.gamesLabel == "All-time scores")
+
+        let inactiveDaily = AsyncCompetitionContext(
+            isDaily: true,
+            canPresentDailyActivity: false,
+            canPresentScoreChallenge: false,
+            score: 80,
+            earnedBestThisRun: false,
+            canPresentScoreChaseActivity: false,
+            isAuthenticated: true
+        )
+        #expect(AsyncCompetitionPresentation.resolve(context: inactiveDaily).gamesSlot == nil)
+    }
+
+    @Test
+    func asyncCompetitionPresentationLayerStaysReadOnlyPresentation() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let presentationSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/AsyncCompetitionPresentation.swift"),
+            encoding: .utf8
+        )
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(!presentationSource.contains("UserDefaults"))
+        #expect(!presentationSource.contains("GKLeaderboard"))
+        #expect(!presentationSource.contains("GameCenterService"))
+        #expect(!presentationSource.contains("completeRun"))
+        #expect(gameSceneSource.contains("AsyncCompetitionPresentation.resolve"))
+        #expect(gameSceneSource.contains("DailyRitualClosure.closure"))
+        #expect(!gameSceneSource.contains("gamesText = VexloStrings.Overlay.playTogether"))
+        #expect(!gameSceneSource.contains("gamesText = VexloStrings.Overlay.challengeFriends"))
+        #expect(!gameSceneSource.contains("gamesText = VexloStrings.Overlay.leaderboard"))
+        #expect(!presentationSource.contains("Leaderboard"))
+        #expect(!presentationSource.contains("Challenge Friends"))
+        #expect(!presentationSource.contains("Play Together"))
+    }
+
+    @Test
+    func asyncCompetitionCopyStaysOffHudAndMidRunSurfaces() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        #expect(!gameSceneSource.contains("VexloStrings.AsyncCompetition"))
+        #expect(gameSceneSource.contains("AsyncCompetitionPresentation.resolve"))
+        #expect(gameSceneSource.contains("presentDailyActivityIfAvailable"))
+        #expect(gameSceneSource.contains("presentScoreChallengeIfAvailable"))
+        #expect(gameSceneSource.contains("showScoreLeaderboard"))
+    }
+
+    @Test
+    func dailyTableSubmissionDedupeAllowsNewDayAndImprovedBestOnly() {
+        #expect(
+            GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 70,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: nil,
+                lastSubmittedScore: 0
+            )
+        )
+        #expect(
+            !GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 70,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: "2025-01-01",
+                lastSubmittedScore: 70
+            )
+        )
+        #expect(
+            !GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 50,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: "2025-01-01",
+                lastSubmittedScore: 70
+            )
+        )
+        #expect(
+            !GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 70,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: "2025-01-01",
+                lastSubmittedScore: 90
+            )
+        )
+        #expect(
+            GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 90,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: "2025-01-01",
+                lastSubmittedScore: 70
+            )
+        )
+        #expect(
+            GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 80,
+                dayID: "2025-01-02",
+                lastSubmittedDayID: "2025-01-01",
+                lastSubmittedScore: 70
+            )
+        )
+        #expect(
+            !GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: 0,
+                dayID: "2025-01-01",
+                lastSubmittedDayID: nil,
+                lastSubmittedScore: 0
+            )
+        )
+    }
+
+    @Test
+    func dailyReplayHonestyMapsToTableSubmissionPolicy() {
+        let (defaults, suiteName) = makeDefaults()
+        defer { clear(suiteName) }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let service = DailyChallengeService(defaults: defaults, calendar: calendar)
+        let dayID = "2025-03-10"
+
+        let first = service.completeRun(dayID: dayID, score: 120)
+        #expect(first.todayBest == 120)
+        #expect(
+            GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: first.todayBest,
+                dayID: dayID,
+                lastSubmittedDayID: nil,
+                lastSubmittedScore: 0
+            )
+        )
+
+        let worseReplay = service.completeRun(dayID: dayID, score: 90)
+        #expect(worseReplay.todayBest == 120)
+        #expect(
+            !GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: worseReplay.todayBest,
+                dayID: dayID,
+                lastSubmittedDayID: dayID,
+                lastSubmittedScore: 120
+            )
+        )
+
+        let betterReplay = service.completeRun(dayID: dayID, score: 140)
+        #expect(betterReplay.todayBest == 140)
+        #expect(
+            GameCenterService.shouldSubmitDailyTableScore(
+                todayBest: betterReplay.todayBest,
+                dayID: dayID,
+                lastSubmittedDayID: dayID,
+                lastSubmittedScore: 120
+            )
+        )
+    }
+
+    @Test
+    func dailyTableSubmissionLayerStaysIsolatedFromAllTimePath() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let gameCenterSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/GameCenterService.swift"),
+            encoding: .utf8
+        )
+        let gameSceneSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/UI/GameScene.swift"),
+            encoding: .utf8
+        )
+        let dailySource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/DailyChallengeService.swift"),
+            encoding: .utf8
+        )
+        let presentationSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/AsyncCompetitionPresentation.swift"),
+            encoding: .utf8
+        )
+
+        #expect(gameCenterSource.contains("Leaderboard.dailyTable"))
+        #expect(gameCenterSource.contains("reportDailyTableScore"))
+        #expect(!gameCenterSource.contains("pendingBestScore = max(pendingBestScore, todayBest)"))
+        #expect(gameSceneSource.contains("reportDailyTableScore"))
+        let finalizeStart = try #require(gameSceneSource.range(of: "private func finalizeRunIfNeeded()"))
+        let finalizeBlock = String(gameSceneSource[finalizeStart.lowerBound...])
+        let dailyBranchStart = try #require(finalizeBlock.range(of: "if engine.isDailyChallenge {"))
+        let dailyBranchSlice = finalizeBlock[dailyBranchStart.lowerBound...]
+        let dailyBranchEnd = try #require(dailyBranchSlice.range(of: "} else {"))
+        let dailyBranch = String(dailyBranchSlice[..<dailyBranchEnd.lowerBound])
+        #expect(dailyBranch.contains("reportDailyTableScore"))
+        #expect(dailyBranch.contains("completion.todayBest"))
+        #expect(!dailyBranch.contains("reportCompletedRun"))
+        #expect(!dailyBranch.contains("nextCompletedRunCount"))
+        #expect(!dailySource.contains("GameKit"))
+        #expect(!dailySource.contains("GKLeaderboard"))
+        #expect(!presentationSource.contains("reportDailyTableScore"))
+    }
+
+    @Test
     func resultOverlayCaptureSuppressesGamesButPreservesMeaningfulProgress() {
         #expect(!GameScene.shouldShowResultGames(isResultOverlayCapture: true, showsGames: true, canShare: false, showsContinue: false))
         #expect(!GameScene.shouldShowResultGames(isResultOverlayCapture: false, showsGames: true, canShare: true, showsContinue: false))
@@ -1855,45 +2525,80 @@ struct CriticalPathRegressionTests {
     @Test
     func resultShareServiceKeepsImageLedCardsReachableForNormalAndDailyPayloads() throws {
         let controller = UIActivityViewController(activityItems: ["placeholder"], applicationActivities: nil)
-        let cases: [(ResultSharePayload, String)] = [
-            (
-                ResultSharePayload(mode: .normal, score: 210, badge: "New Best", detail: "12 to best"),
-                "VEXLO - Main Run - 210 - New Best"
-            ),
-            (
-                ResultSharePayload(mode: .daily, score: 70, badge: "Best Today", detail: "Balanced board complete"),
-                "VEXLO - Today's Challenge - 70 - Best Today"
-            ),
-            (
-                ResultSharePayload(
-                    mode: .daily,
-                    score: 70,
-                    badge: "Best Today",
-                    detail: "Balanced board complete",
-                    dailyRitualHeadline: "WEDNESDAY · BALANCED BOARD"
-                ),
-                "VEXLO - Today's Challenge - WEDNESDAY · BALANCED BOARD - 70 - Best Today"
-            )
-        ]
+        let normalPayload = ResultSharePayload(mode: .normal, score: 210, badge: "New Best", detail: "12 to best")
+        let normalItems = ResultShareService.activityItems(for: normalPayload)
+        #expect(normalItems.count == 1)
 
-        for (payload, expectedTitle) in cases {
-            let items = ResultShareService.activityItems(for: payload)
-            #expect(items.count == 1)
+        let normalSource = try #require(normalItems.first as? UIActivityItemSource)
+        let normalPlaceholder = try #require(normalSource.activityViewControllerPlaceholderItem(controller) as? UIImage)
+        #expect(normalPlaceholder.size == CGSize(width: 1200, height: 1600))
 
-            let source = try #require(items.first as? UIActivityItemSource)
-            let placeholder = try #require(source.activityViewControllerPlaceholderItem(controller) as? UIImage)
-            #expect(placeholder.size == CGSize(width: 1200, height: 1600))
+        let normalImage = try #require(normalSource.activityViewController(controller, itemForActivityType: nil) as? UIImage)
+        #expect(normalImage.size == CGSize(width: 1200, height: 1600))
 
-            let item = try #require(source.activityViewController(controller, itemForActivityType: nil) as? UIImage)
-            #expect(item.size == CGSize(width: 1200, height: 1600))
+        let normalSubject = normalSource.activityViewController?(controller, subjectForActivityType: nil)
+        #expect(normalSubject == "VEXLO - Main Run - 210 - New Best")
 
-            let subject = source.activityViewController?(controller, subjectForActivityType: nil)
-            #expect(subject == expectedTitle)
+        let normalMetadata = try #require(normalSource.activityViewControllerLinkMetadata?(controller))
+        #expect(normalMetadata.title == "VEXLO - Main Run - 210 - New Best")
+        #expect(normalMetadata.imageProvider != nil)
+        #expect(normalMetadata.url == nil)
 
-            let metadata = try #require(source.activityViewControllerLinkMetadata?(controller))
-            #expect(metadata.title == expectedTitle)
-            #expect(metadata.imageProvider != nil)
-        }
+        let dailyPayload = ResultSharePayload(
+            mode: .daily,
+            score: 70,
+            badge: "Best Today",
+            detail: "Balanced board complete",
+            dailyRitualHeadline: "Wednesday · Balanced Board"
+        )
+        let dailyItems = ResultShareService.activityItems(for: dailyPayload)
+        #expect(dailyItems.count == 3)
+
+        let dailySource = try #require(dailyItems.first as? UIActivityItemSource)
+        let dailyImage = try #require(dailySource.activityViewController(controller, itemForActivityType: nil) as? UIImage)
+        #expect(dailyImage.size == CGSize(width: 1200, height: 1600))
+
+        let dailySubject = dailySource.activityViewController?(controller, subjectForActivityType: nil)
+        #expect(dailySubject == "Vexlo — Wednesday · Balanced Board")
+
+        let dailyMetadata = try #require(dailySource.activityViewControllerLinkMetadata?(controller))
+        #expect(dailyMetadata.url?.absoluteString == "vexlo://daily")
+        #expect(dailyMetadata.originalURL?.absoluteString == "vexlo://daily")
+
+        let inviteLine = try #require(dailyItems[1] as? String)
+        #expect(inviteLine == "Play today's board in Vexlo.")
+        let inviteURL = try #require(dailyItems[2] as? URL)
+        #expect(inviteURL.absoluteString == "vexlo://daily")
+    }
+
+    @Test
+    func asyncCompetitionSharePresentationStaysDailyOnlyAndReadOnly() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let presentationSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/AsyncCompetitionSharePresentation.swift"),
+            encoding: .utf8
+        )
+        let shareSource = try String(
+            contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/ResultShareService.swift"),
+            encoding: .utf8
+        )
+        #expect(!presentationSource.contains("GameCenterService"))
+        #expect(!presentationSource.contains("GKLeaderboard"))
+        #expect(!presentationSource.contains("reportDailyTableScore"))
+        #expect(presentationSource.contains("vexlo://daily"))
+        #expect(shareSource.contains("AsyncCompetitionSharePresentation.dailyShareContent"))
+
+        let normal = ResultSharePayload(mode: .normal, score: 120, badge: nil, detail: nil)
+        #expect(AsyncCompetitionSharePresentation.dailyShareContent(for: normal) == nil)
+        #expect(ResultShareService.activityItems(for: normal).count == 1)
+
+        let daily = ResultSharePayload(mode: .daily, score: 80, badge: nil, detail: nil)
+        let content = try #require(AsyncCompetitionSharePresentation.dailyShareContent(for: daily))
+        #expect(content.inviteURL.absoluteString == "vexlo://daily")
+        #expect(content.inviteLine == "Play today's board in Vexlo.")
+        #expect(content.subject == "Vexlo — Today's board")
     }
 
     @Test
@@ -2352,11 +3057,11 @@ struct MonetizationOfferLifecycleRegressionTests {
 private func boardPressure(
     on board: HexBoard,
     occupiedCellCount: Int? = nil,
-    isOpeningState: Bool
+    freezeStructuralSemantics: Bool
 ) -> BoardPressureSnapshot {
     let context = BoardPressureContext(
         occupiedCellCount: occupiedCellCount ?? board.snapshot.cells.count,
-        isOpeningState: isOpeningState,
+        freezeStructuralSemantics: freezeStructuralSemantics,
         cols: board.cols,
         rows: board.rows
     )
@@ -2449,6 +3154,32 @@ private func batchOffsetSignatures(_ pieces: [HexPiece]) -> [String] {
             .map { "\($0.col):\($0.row)" }
             .joined(separator: "|")
     }
+}
+
+/// Opening / early-refill tray includes line runway (tier 0/1 spans), not pressure spam.
+private func earlySessionTrayHasNearLineAffordance(_ pieces: [HexPiece]) -> Bool {
+    let signatures = Set(batchOffsetSignatures(pieces))
+    let nearLineSpans: Set<String> = [
+        "0:0|0:1",
+        "0:0|1:0",
+        "0:0|0:1|0:2"
+    ]
+    let cornerPivots: Set<String> = [
+        "0:0|1:0|0:1",
+        "0:0|1:0|1:1",
+        "0:0|0:1|1:1"
+    ]
+    let nearLineCount = signatures.intersection(nearLineSpans).count
+    if signatures.contains("0:0|0:1|0:2") {
+        return true
+    }
+    if nearLineCount >= 2 {
+        return true
+    }
+    if nearLineCount >= 1 && !signatures.intersection(cornerPivots).isEmpty {
+        return true
+    }
+    return false
 }
 
 private func boardSignature(_ snapshot: HexBoard.Snapshot) -> [String] {

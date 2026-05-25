@@ -8,6 +8,7 @@ enum VexloStrings {
         static let title = localized("hud.title", value: "VEXLO")
         static let mainRun = localized("hud.main_run", value: "Main Run")
         static let boardReading = localized("hud.board_reading", value: "Board reading")
+        static let runOpen = localized("hud.run_open", value: "Run open")
         static let todaysChallenge = localized("hud.todays_challenge", value: "Today's Challenge")
         static let todaysBoard = localized("hud.todays_board", value: "Today's Board")
 
@@ -132,6 +133,31 @@ enum VexloStrings {
         }
     }
 
+    enum AsyncCompetition {
+        static let todaysTable = localized("async_competition.todays_table", value: "Today's table")
+        static let sendReadingChallenge = localized(
+            "async_competition.send_reading_challenge",
+            value: "Send a reading challenge"
+        )
+        static let shareThisRun = localized("async_competition.share_this_run", value: "Share this run")
+        static let allTimeScores = localized("async_competition.all_time_scores", value: "All-time scores")
+        static let dailyShareSubjectDefault = localized(
+            "async_competition.daily_share_subject",
+            value: "Vexlo — Today's board"
+        )
+        static let dailyShareInviteLine = localized(
+            "async_competition.daily_share_invite",
+            value: "Play today's board in Vexlo."
+        )
+
+        static func dailyShareSubject(headline: String) -> String {
+            String(
+                format: localized("async_competition.daily_share_subject_headline", value: "Vexlo — %@"),
+                headline
+            )
+        }
+    }
+
     enum RunReading {
         static let runComplete = localized("run.complete", value: "Run complete")
         static let chainLedReading = localized("run.reading.chain_led", value: "Chain-led reading")
@@ -152,6 +178,11 @@ enum VexloStrings {
 
     enum Onboarding {
         static let dragToBoard = localized("onboarding.drag_to_board", value: "Drag a piece to the board")
+        static let firstClearLine = localized("onboarding.first_clear_line", value: "Line clear")
+        static let firstClearRunOpen = localized(
+            "onboarding.first_clear_run_open",
+            value: "Structure cleared. Your run is scoring."
+        )
         static let completeLine = localized("onboarding.complete_line", value: "Chain the next clear to lift score")
         static let chainBuildsScore = localized("onboarding.chain_builds_score", value: "Consecutive clears build a chain")
 
@@ -175,6 +206,29 @@ enum VexloStrings {
         static let leaderboardHint = localized("accessibility.leaderboard_hint", value: "Shows Game Center scores")
         static let dailyActivity = localized("accessibility.daily_activity", value: "Daily Activity")
         static let dailyActivityHint = localized("accessibility.daily_activity_hint", value: "Opens today's Game Center activity")
+        static let todaysTable = localized("accessibility.todays_table", value: "Today's table")
+        static let todaysTableHint = localized(
+            "accessibility.todays_table_hint",
+            value: "Opens today's shared board in Game Center"
+        )
+        static let sendReadingChallenge = localized(
+            "accessibility.send_reading_challenge",
+            value: "Send a reading challenge"
+        )
+        static let sendReadingChallengeHint = localized(
+            "accessibility.send_reading_challenge_hint",
+            value: "Opens the Game Center challenge flow for this run"
+        )
+        static let shareThisRun = localized("accessibility.share_this_run", value: "Share this run")
+        static let shareThisRunHint = localized(
+            "accessibility.share_this_run_hint",
+            value: "Opens the Game Center activity for this run"
+        )
+        static let allTimeScores = localized("accessibility.all_time_scores", value: "All-time scores")
+        static let allTimeScoresHint = localized(
+            "accessibility.all_time_scores_hint",
+            value: "Shows Game Center all-time scores"
+        )
         static let challengeFriends = localized("accessibility.challenge_friends", value: "Challenge Friends")
         static let challengeFriendsHint = localized("accessibility.challenge_friends_hint", value: "Opens the Game Center challenge flow")
         static let playTogether = localized("accessibility.play_together", value: "Play Together")

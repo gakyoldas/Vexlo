@@ -81,6 +81,7 @@ final class MonetizationService {
 
     private let defaults = UserDefaults.standard
     private let policy = MonetizationPolicy()
+    private(set) var entitlements = EntitlementSnapshot.none
     private(set) var capabilities = MonetizationCapabilities()
     private var rewardedFoundationConfigured = false
     private var supporterFoundationConfigured = false
@@ -151,7 +152,7 @@ final class MonetizationService {
             completion(.unavailable)
             return
         }
-        if capabilities.supporterOwned, offer != .supporterUnlock {
+        if entitlements.removesRewardedAdRequirement, offer != .supporterUnlock {
             recordOfferPresentation(offer)
             refreshCapabilities()
             completion(.rewarded)
@@ -230,11 +231,14 @@ final class MonetizationService {
     }
 
     private func refreshCapabilities() {
+        entitlements = EntitlementCatalog.liveSnapshot(
+            supporterOwned: SupporterPackService.shared.isOwned
+        )
         let availability = RewardedAdsService.shared.availability
         capabilities.rewardedContinueAvailable = availability.continueAfterLossAvailable
         capabilities.rewardedRerollAvailable = availability.rerollTrayPieceAvailable
         capabilities.supporterUnlockAvailable = SupporterPackService.shared.isProductLoaded
-        capabilities.supporterOwned = SupporterPackService.shared.isOwned
+        capabilities.supporterOwned = entitlements.supporterOwned
     }
 
     private func rewardedPlacement(for offer: MonetizationOfferKind) -> RewardedPlacement? {
@@ -264,7 +268,7 @@ final class MonetizationService {
             rerollOfferCount: runState.rerollOfferCount,
             sessionCount: sessionCount,
             runsStarted: runsStarted,
-            supporterOwned: capabilities.supporterOwned,
+            supporterOwned: entitlements.supporterOwned,
             continueCommerceAvailable: capabilities.supports(.continueAfterLoss),
             rerollCommerceAvailable: capabilities.supports(.rerollTrayPiece)
         )
@@ -303,5 +307,10 @@ extension MonetizationService {
     func testingForceRewardedCommerceCapabilitiesForPresentation() {
         capabilities.rewardedContinueAvailable = true
         capabilities.rewardedRerollAvailable = true
+    }
+
+    func testingApplyEntitlementSnapshot(_ snapshot: EntitlementSnapshot) {
+        entitlements = snapshot
+        capabilities.supporterOwned = snapshot.supporterOwned
     }
 }

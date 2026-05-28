@@ -4642,6 +4642,60 @@ struct EthicalMonetizationWiringRegressionTests {
     }
 }
 
+@Suite(.serialized)
+struct EntitlementCatalogRegressionTests {
+    @Test
+    func liveSnapshotDefaultsFutureEntitlementsToFalse() {
+        let snapshot = EntitlementCatalog.liveSnapshot(supporterOwned: false)
+        #expect(!snapshot.supporterOwned)
+        #expect(!snapshot.noAdsOwned)
+        #expect(!snapshot.allAccessOwned)
+        #expect(!snapshot.founderOwned)
+        #expect(snapshot.ownedCosmeticIDs.isEmpty)
+        #expect(!snapshot.removesRewardedAdRequirement)
+        #expect(!snapshot.hasAllAccess)
+        #expect(!snapshot.ownsCosmetic(id: "mineral.dusk"))
+    }
+
+    @Test
+    func supporterOwnedSnapshotRemovesRewardedAdRequirement() {
+        let snapshot = EntitlementCatalog.liveSnapshot(supporterOwned: true)
+        #expect(snapshot.supporterOwned)
+        #expect(snapshot.removesRewardedAdRequirement)
+        #expect(snapshot.hasEntitlement(.supporter))
+        #expect(!snapshot.hasEntitlement(.noAds))
+    }
+
+    @Test
+    func allAccessSnapshotOwnsCosmeticWithoutExplicitID() {
+        let snapshot = EntitlementSnapshot(
+            supporterOwned: false,
+            noAdsOwned: false,
+            allAccessOwned: true,
+            founderOwned: false,
+            ownedCosmeticIDs: []
+        )
+        #expect(snapshot.hasAllAccess)
+        #expect(snapshot.removesRewardedAdRequirement)
+        #expect(snapshot.ownsCosmetic(id: "mineral.dusk"))
+    }
+
+    @Test
+    func monetizationCapabilitiesPreserveSupporterOwnedFromSnapshot() {
+        let owned = EntitlementCatalog.liveSnapshot(supporterOwned: true)
+        MonetizationService.shared.testingApplyEntitlementSnapshot(owned)
+
+        #expect(MonetizationService.shared.entitlements.supporterOwned)
+        #expect(MonetizationService.shared.capabilities.supporterOwned)
+        #expect(MonetizationService.shared.entitlements.removesRewardedAdRequirement)
+    }
+
+    @Test
+    func supporterProductIDMatchesSupporterPack() {
+        #expect(EntitlementProductID.supporterPack == SupporterPackService.ProductID.supporterPack)
+    }
+}
+
 private func seedMonetizationMaturityForEthicalWiringTests() {
     let defaults = UserDefaults.standard
     defaults.set(4, forKey: "nf_vexlo_monetization_session_count")

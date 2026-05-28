@@ -1,5 +1,6 @@
 import Foundation
 import LinkPresentation
+import SpriteKit
 import Testing
 import UIKit
 @testable import Vexlo
@@ -232,6 +233,41 @@ struct CriticalPathRegressionTests {
     }
 
     @Test
+    func clearedCellJewelColorsSnapshotUsesBoardBeforePlacementAccent() {
+        let existing = UIColor(hex: "7A74F7")
+        let piece = UIColor(hex: "55A7F6")
+        let colors = ClearConsequenceSurface.clearedCellJewelColors(
+            clearedCoordinates: [HexCoordinate(2, 2), HexCoordinate(3, 2)],
+            placedCoordinates: [HexCoordinate(3, 2)],
+            pieceColor: piece,
+            boardColorAt: { coord in
+                coord == HexCoordinate(2, 2) ? existing : nil
+            }
+        )
+        #expect(colors[HexCoordinate(2, 2)] == existing)
+        #expect(colors[HexCoordinate(3, 2)] == piece)
+    }
+
+    @Test
+    func clearConsequenceSurfacePolicyAndCommitTiming() {
+        #expect(!ClearConsequenceSurface.includesBoardReliefContactsInDragHighlight)
+        let timing = ClearConsequenceSurface.commitAnimationTiming(prefersReducedMotion: false)
+        #expect(timing.stagger > 0.02)
+        #expect(timing.dwell >= 0.13)
+        #expect(timing.dissolve >= 0.28)
+        #expect(timing.totalDuration(cellCount: 7) > 0.62)
+        #expect(
+            ClearConsequenceSurface.footprintDragProfile(
+                resolutionProfile: .clearPlacement,
+                evaluationTier: .constructive,
+                showsClearConsequence: true
+            ) == .survivalPlacement
+        )
+        let reduced = ClearConsequenceSurface.commitAnimationTiming(prefersReducedMotion: true)
+        #expect(reduced.totalDuration(cellCount: 7) == 0)
+    }
+
+    @Test
     func runThresholdSurfacePhasesAndCeremonyGating() {
         #expect(
             RunThresholdSurface.phase(isDailyChallenge: false, score: 0, didClearAny: false)
@@ -255,10 +291,22 @@ struct CriticalPathRegressionTests {
             )
         )
         #expect(
-            !RunThresholdSurface.includesClearConsequencesInDragHighlight(for: .preThreshold)
+            !RunThresholdSurface.includesClearConsequencesInDragHighlight(
+                for: .preThreshold,
+                clearedLineCount: 0
+            )
         )
         #expect(
-            RunThresholdSurface.includesClearConsequencesInDragHighlight(for: .postThreshold)
+            RunThresholdSurface.includesClearConsequencesInDragHighlight(
+                for: .preThreshold,
+                clearedLineCount: 1
+            )
+        )
+        #expect(
+            RunThresholdSurface.includesClearConsequencesInDragHighlight(
+                for: .postThreshold,
+                clearedLineCount: 0
+            )
         )
         #expect(
             GameScene.footprintDragPreviewProfile(
@@ -352,6 +400,13 @@ struct CriticalPathRegressionTests {
             encoding: .utf8
         )
         #expect(gameSceneSource.contains("RunThresholdSurface"))
+        #expect(gameSceneSource.contains("ClearConsequenceSurface"))
+        #expect(gameSceneSource.contains("applyClearConsequenceEmptyDragPreview"))
+        #expect(gameSceneSource.contains("ClearConsequenceSurface.footprintDragProfile"))
+        #expect(gameSceneSource.contains("clearedJewelColors"))
+        #expect(gameSceneSource.contains("pendingLineClearCoords"))
+        #expect(gameSceneSource.contains("ClearConsequenceSurface.clearedCellJewelColors"))
+        #expect(gameSceneSource.contains("runLineClearCommitAnimation"))
         #expect(gameSceneSource.contains("animateLineClear"))
         #expect(gameSceneSource.contains("applyThresholdScoreAwakening"))
         #expect(gameSceneSource.contains("hasPresentedRunThresholdCeremony"))
@@ -361,7 +416,7 @@ struct CriticalPathRegressionTests {
         #expect(!gameSceneSource.contains("showEventCue(Self.normalFirstClearEventCueText"))
         #expect(gameSceneSource.contains("openingTraySoleClearCapableSlotIndex()"))
         #expect(gameSceneSource.contains("PieceSpecificDragHighlight.coordinates"))
-        #expect(gameSceneSource.contains("includeBoardReliefContacts"))
+        #expect(gameSceneSource.contains("ClearConsequenceSurface.includesBoardReliefContactsInDragHighlight"))
         #expect(gameSceneSource.contains("highlight.isHidden = false"))
         #expect(gameSceneSource.contains("suppressDragPreviewMaskingLayers(on:"))
         #expect(gameSceneSource.contains("dragPreviewProfile"))
@@ -539,11 +594,12 @@ struct CriticalPathRegressionTests {
             identity: identity,
             completion: DailyChallengeCompletion(
                 dayID: "2025-01-15",
-                score: 80,
+                score: 340,
                 isNewBestToday: true,
-                todayBest: 80,
+                todayBest: 340,
                 streakCount: 3
-            )
+            ),
+            didClearAny: true
         )
         #expect(newBest.completionCaption == "Wednesday · Complete")
         #expect(newBest.closureDetail == "Focused board complete")
@@ -555,14 +611,83 @@ struct CriticalPathRegressionTests {
             identity: identity,
             completion: DailyChallengeCompletion(
                 dayID: "2025-01-15",
-                score: 42,
+                score: 160,
                 isNewBestToday: false,
-                todayBest: 80,
+                todayBest: 340,
                 streakCount: 3
-            )
+            ),
+            didClearAny: true
         )
-        #expect(recorded.badge == "Today recorded")
-        #expect(recorded.closureDetail == "Focused board complete")
+        #expect(recorded.completionCaption == "Today recorded")
+        #expect(recorded.badge == "")
+        #expect(recorded.closureDetail == "One cleaner board goes farther")
+
+        let modestCompletion = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 260,
+                isNewBestToday: false,
+                todayBest: 340,
+                streakCount: 3
+            ),
+            didClearAny: true
+        )
+        #expect(modestCompletion.completionCaption == "Wednesday · Complete")
+        #expect(modestCompletion.closureDetail == "Today's foothold — more still in the board")
+        #expect(modestCompletion.progress == "The board still has more in it today")
+
+        let modestCompletionReplayLift = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 280,
+                isNewBestToday: false,
+                todayBest: 340,
+                streakCount: 3
+            ),
+            didClearAny: true
+        )
+        #expect(modestCompletionReplayLift.progress == "One cleaner board presses today's best")
+
+        let softBoundaryRecorded = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 220,
+                isNewBestToday: false,
+                todayBest: 340,
+                streakCount: 3
+            ),
+            didClearAny: true
+        )
+        #expect(softBoundaryRecorded.completionCaption == "Today recorded")
+
+        let softBoundaryNewBestCompletion = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 220,
+                isNewBestToday: true,
+                todayBest: 220,
+                streakCount: 3
+            ),
+            didClearAny: true
+        )
+        #expect(softBoundaryNewBestCompletion.completionCaption == "Wednesday · Complete")
+
+        let lowStrongNoContinuity = DailyRitualClosure.closure(
+            identity: identity,
+            completion: DailyChallengeCompletion(
+                dayID: "2025-01-15",
+                score: 330,
+                isNewBestToday: false,
+                todayBest: 340,
+                streakCount: 3
+            ),
+            didClearAny: true
+        )
+        #expect(lowStrongNoContinuity.progress == "")
         #expect(VexloStrings.DailyRitual.completionCaption(weekday: "") == "Today complete")
     }
 
@@ -594,7 +719,8 @@ struct CriticalPathRegressionTests {
                 isNewBestToday: false,
                 todayBest: before.best,
                 streakCount: 2
-            )
+            ),
+            didClearAny: true
         )
 
         #expect(service.bestScore(for: dayID) == before.best)
@@ -2048,7 +2174,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 4,
             completedRuns: 0
         )
-        #expect(RunReadingSummary.readingDetail(for: base) == "Tight board")
+        #expect(RunReadingSummary.readingDetail(for: base) == "No clear found")
 
         var cleared = base
         cleared = RunReadingContext(
@@ -2062,7 +2188,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: base.occupiedCellCount,
             completedRuns: base.completedRuns
         )
-        #expect(RunReadingSummary.readingDetail(for: cleared) == "Steady clears")
+        #expect(RunReadingSummary.readingDetail(for: cleared) == "Clear rhythm held")
 
         let chainLed = RunReadingContext(
             score: 120,
@@ -2076,9 +2202,23 @@ struct CriticalPathRegressionTests {
             completedRuns: 5
         )
         #expect(RunReadingSummary.readingDetail(for: chainLed) == "Chain-led reading")
+        #expect(RunReadingSummary.progressLine(for: chainLed, isNewBest: false) == "Chain read landed, conversion still thin")
 
         let underPressure = RunReadingContext(
-            score: 90,
+            score: 180,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .taut,
+            occupiedCellCount: 16,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: underPressure) == "Read under pressure")
+
+        let weakEarlyCollapse = RunReadingContext(
+            score: 110,
             best: 200,
             runStartBest: 0,
             maxCombo: 1,
@@ -2088,7 +2228,140 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 15,
             completedRuns: 0
         )
-        #expect(RunReadingSummary.readingDetail(for: underPressure) == "Read under pressure")
+        #expect(RunReadingSummary.readingDetail(for: weakEarlyCollapse) == "Board closed early")
+
+        let softBoundaryWeak = RunReadingContext(
+            score: 160,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 9,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: softBoundaryWeak) == "Board closed early")
+
+        let softBoundaryStable = RunReadingContext(
+            score: 160,
+            best: 200,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 12,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: softBoundaryStable) == "Clear rhythm held")
+        #expect(RunReadingSummary.progressLine(for: softBoundaryStable, isNewBest: false) == "Keep one anchor open through the turn")
+
+        let clearRhythmMid = RunReadingContext(
+            score: 520,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 11,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.readingDetail(for: clearRhythmMid) == "Clear rhythm held")
+        #expect(RunReadingSummary.progressLine(for: clearRhythmMid, isNewBest: false) == "Keep one lane open earlier")
+
+        let clearRhythmStrong = RunReadingContext(
+            score: 760,
+            best: 1100,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 10,
+            completedRuns: 0
+        )
+        #expect(RunReadingSummary.progressLine(for: clearRhythmStrong, isNewBest: false) == "Keep one anchor free")
+
+        let chainLedStrong = RunReadingContext(
+            score: 820,
+            best: 1100,
+            runStartBest: 0,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 9,
+            completedRuns: 5
+        )
+        #expect(RunReadingSummary.readingDetail(for: chainLedStrong) == "Chain-led reading")
+        #expect(RunReadingSummary.progressLine(for: chainLedStrong, isNewBest: false) == "")
+
+        let clearRhythmLowMidCalm = RunReadingContext(
+            score: 280,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 6,
+            completedRuns: 3
+        )
+        #expect(RunReadingSummary.progressLine(for: clearRhythmLowMidCalm, isNewBest: false) == "Rhythm held, conversion still thin")
+
+        let clearRhythmLowMidClosed = RunReadingContext(
+            score: 420,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 13,
+            completedRuns: 4
+        )
+        #expect(RunReadingSummary.progressLine(for: clearRhythmLowMidClosed, isNewBest: false) == "Held together, but lanes closed in")
+
+        let clearRhythmMidCalmExtended = RunReadingContext(
+            score: 580,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 1,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 7,
+            completedRuns: 5
+        )
+        #expect(RunReadingSummary.progressLine(for: clearRhythmMidCalmExtended, isNewBest: false) == "Stable clears, rhythm not extended")
+
+        let chainLedMidOpenness = RunReadingContext(
+            score: 520,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 3,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .attentive,
+            occupiedCellCount: 11,
+            completedRuns: 6
+        )
+        #expect(RunReadingSummary.progressLine(for: chainLedMidOpenness, isNewBest: false) == "Chains opened, pace did not hold")
+
+        let chainLedMidTaut = RunReadingContext(
+            score: 480,
+            best: 900,
+            runStartBest: 0,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .taut,
+            occupiedCellCount: 15,
+            completedRuns: 7
+        )
+        #expect(RunReadingSummary.progressLine(for: chainLedMidTaut, isNewBest: false) == "Reading held, openness slipped")
 
         let lateRecovery = RunReadingContext(
             score: 80,
@@ -2101,7 +2374,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 16,
             completedRuns: 2
         )
-        #expect(RunReadingSummary.readingDetail(for: lateRecovery) == "Late recovery")
+        #expect(RunReadingSummary.readingDetail(for: lateRecovery) == "Recovery came late")
     }
 
     @Test
@@ -2117,7 +2390,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 11,
             completedRuns: 4
         )
-        #expect(RunReadingSummary.progressLine(for: nearMissContext, isNewBest: false) == "One cleaner run was there")
+        #expect(RunReadingSummary.progressLine(for: nearMissContext, isNewBest: false) == "One cleaner read goes farther")
 
         let gapContext = RunReadingContext(
             score: 210,
@@ -2130,7 +2403,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 6,
             completedRuns: 4
         )
-        #expect(RunReadingSummary.progressLine(for: gapContext, isNewBest: false) == "30 to best")
+        #expect(RunReadingSummary.progressLine(for: gapContext, isNewBest: false) == "Close 30 to best")
 
         let runCountContext = RunReadingContext(
             score: 50,
@@ -2143,7 +2416,7 @@ struct CriticalPathRegressionTests {
             occupiedCellCount: 3,
             completedRuns: 12
         )
-        #expect(RunReadingSummary.progressLine(for: runCountContext, isNewBest: false) == "Run 12")
+        #expect(RunReadingSummary.progressLine(for: runCountContext, isNewBest: false) == "Open one lane earlier next run")
 
         #expect(RunReadingSummary.quietNearMissMasteryLine(
             score: 209,
@@ -2184,7 +2457,8 @@ struct CriticalPathRegressionTests {
         let summary = RunReadingSummary.summary(context: context)
         #expect(summary.caption == "Run complete")
         #expect(summary.badge == "New Best")
-        #expect(summary.readingDetail == "Chain-led reading")
+        #expect(summary.readingDetail == "Your best run yet")
+        #expect(summary.replayLabel == "Play a Cleaner Run")
     }
 
     @Test

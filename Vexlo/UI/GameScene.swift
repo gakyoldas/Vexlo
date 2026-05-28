@@ -21,6 +21,7 @@ final class GameScene: SKScene {
     private var dragSlotIndex: Int = -1
     private var dragAnchor: HexCoordinate?
     private var dragHighlightedCells: Set<HexCoordinate> = []
+    private var pendingLineClearCoords: Set<HexCoordinate> = []
     private var lastDragHighlightAnchor: HexCoordinate?
     private var lastDragHighlightValid: Bool?
     private var bestCaptionLabel = SKLabelNode()
@@ -200,12 +201,12 @@ final class GameScene: SKScene {
         private let monumentAura = SKShapeNode()
         private let headingField = SKShapeNode()
         private let monumentVeil = SKShapeNode()
-        private let badgeCapsule = SKShapeNode()
         private let scoreField = SKShapeNode()
         private let restartButton = SKShapeNode()
         private let restartBase = SKShapeNode()
         private let restartHalo = SKShapeNode()
         private let restartInnerStroke = SKShapeNode()
+        private let restartSheen = SKShapeNode()
         private let restartLabel = SKLabelNode()
 
         func rebuild(
@@ -248,13 +249,6 @@ final class GameScene: SKScene {
             scoreField.lineWidth = 0.8
             scoreField.zPosition = 200.36
             node.addChild(scoreField)
-
-            badgeCapsule.fillColor = UIColor(hex: "17131C").withAlphaComponent(0.78)
-            badgeCapsule.strokeColor = UIColor(hex: "C4A862").withAlphaComponent(0.24)
-            badgeCapsule.lineWidth = 0.85
-            badgeCapsule.zPosition = 200.40
-            badgeCapsule.isHidden = true
-            node.addChild(badgeCapsule)
 
             configureCaptionLabel(size: size, metrics: metrics, labelFactory: labelFactory)
             configureScoreLabel(size: size, metrics: metrics, labelFactory: labelFactory)
@@ -333,9 +327,9 @@ final class GameScene: SKScene {
             shareLabel.text = VexloStrings.Overlay.shareResult
             let shouldShowShare = GameScene.shouldShowResultShare(canShare: canShare, showsContinue: showsContinue)
             shareLabel.isHidden = !shouldShowShare
-            shareLabel.alpha = shouldShowShare ? 0.82 : 0
+            shareLabel.alpha = shouldShowShare ? (isDaily ? 0.56 : 0.72) : 0
             shareIcon.isHidden = !shouldShowShare
-            shareIcon.alpha = shouldShowShare ? 0.82 : 0
+            shareIcon.alpha = shouldShowShare ? (isDaily ? 0.52 : 0.72) : 0
             relayout(size: size, metrics: metrics, isDaily: isDaily, score: Int(scoreLabel.text ?? "") ?? 0, fitLabelWidth: fitLabelWidth)
         }
 
@@ -572,13 +566,17 @@ final class GameScene: SKScene {
             restartHalo.strokeColor = .clear
             restartHalo.zPosition = -1
             restartButton.addChild(restartHalo)
+            restartSheen.fillColor = UIColor(hex: "DCE2FF").withAlphaComponent(0.10)
+            restartSheen.strokeColor = .clear
+            restartSheen.zPosition = 0.5
+            restartButton.addChild(restartSheen)
             restartInnerStroke.fillColor = .clear
-            restartInnerStroke.strokeColor = UIColor.white.withAlphaComponent(0.132)
-            restartInnerStroke.lineWidth = 0.9
+            restartInnerStroke.strokeColor = UIColor(hex: "E7EAFF").withAlphaComponent(0.22)
+            restartInnerStroke.lineWidth = 0.85
             restartInnerStroke.zPosition = 1
             restartButton.addChild(restartInnerStroke)
             copyLabel(
-                from: labelFactory(VexloStrings.Overlay.playAgain, 22, UIColor(hex: "F5F4FB"), 1, .center, true),
+                from: labelFactory(VexloStrings.Overlay.playAgain, 20.5, UIColor(hex: "F5F7FF"), 1, .center, true),
                 into: restartLabel
             )
             restartLabel.fontName = "SFProDisplay-Semibold"
@@ -659,11 +657,11 @@ final class GameScene: SKScene {
             captionLabel.fontName = "SFProDisplay-Regular"
             captionLabel.fontColor = UIColor(hex: "ECEEF7").withAlphaComponent(0.95)
             captionLabel.alpha = 1.0
-            captionLabel.fontSize = 27 * fontScale
+            captionLabel.fontSize = 25.8 * fontScale
             detailLabel.fontName = "SFProDisplay-Medium"
             detailLabel.fontColor = UIColor(hex: "E8ECF4").withAlphaComponent(0.92)
             detailLabel.alpha = isWeakScoreTerminal ? 0.82 : 0.88
-            detailLabel.fontSize = 17.6 * fontScale * detailScale
+            detailLabel.fontSize = 16.8 * fontScale * detailScale
             scoreLabel.fontSize = 98 * fontScale * lowScoreScale
             scoreShadowLabel.fontSize = 98 * fontScale * lowScoreScale
             scoreShadowLabel.alpha = isZeroScoreTerminal ? 0.14 : 0.18
@@ -672,27 +670,27 @@ final class GameScene: SKScene {
             progressLabel.fontName = "SFProDisplay-Semibold"
             progressLabel.fontSize = 13.2 * fontScale
             progressLabel.fontColor = UIColor(hex: "DCE2EF")
-            progressLabel.alpha = isEditorialTerminal ? 0.88 : (isNormalHistoryLineVisible ? 0.84 : 0.70)
+            progressLabel.alpha = isDaily ? 0.74 : (isEditorialTerminal ? 0.88 : (isNormalHistoryLineVisible ? 0.84 : 0.70))
             gamesLabel.fontName = "SFProDisplay-Semibold"
             gamesLabel.fontSize = 13.2 * fontScale
             gamesLabel.fontColor = UIColor(hex: "D7DEED")
             gamesLabel.alpha = gamesLabel.isHidden ? 0 : 0.82
             shareLabel.fontName = "SFProDisplay-Semibold"
-            shareLabel.fontSize = 13.6 * fontScale
-            shareLabel.fontColor = UIColor(hex: "DDE4F2").withAlphaComponent(0.82)
-            shareIcon.alpha = 0.82
+            shareLabel.fontSize = 12.9 * fontScale
+            shareLabel.fontColor = UIColor(hex: "D7DFEE").withAlphaComponent(isDaily ? 0.60 : 0.72)
+            shareIcon.alpha = isDaily ? 0.56 : 0.70
 
             if isDaily {
                 badgeLabel.fontName = "SFProDisplay-Semibold"
-                badgeLabel.fontColor = UIColor(hex: "D3B46D")
-                badgeLabel.alpha = 0.95
-                badgeLabel.fontSize = 12.8 * fontScale
+                badgeLabel.fontColor = UIColor(hex: "E2C786")
+                badgeLabel.alpha = 0.94
+                badgeLabel.fontSize = 14.8 * fontScale
                 scoreLabel.fontColor = UIColor(hex: "F2F1F6")
             } else if isSpecial {
                 badgeLabel.fontName = "SFProDisplay-Semibold"
-                badgeLabel.fontColor = UIColor(hex: "D3B46D")
-                badgeLabel.alpha = 0.95
-                badgeLabel.fontSize = 12.8 * fontScale
+                badgeLabel.fontColor = UIColor(hex: "DCC07D")
+                badgeLabel.alpha = 0.90
+                badgeLabel.fontSize = 14.0 * fontScale
                 scoreLabel.fontColor = UIColor(hex: "F2F1F6")
             } else {
                 badgeLabel.fontName = "SFProDisplay-Semibold"
@@ -724,49 +722,24 @@ final class GameScene: SKScene {
             let scaleX = masterScaleX(for: size)
             let scaleY = masterScaleY(for: size)
             let headingY = masterY(316, in: size)
-            let badgeY = masterY(352, in: size)
-            let scoreY = masterY(436, in: size)
-            let detailY = masterY(524, in: size)
+            let badgeY = masterY(366, in: size)
+            let scoreY = masterY(448, in: size)
+            let detailY = masterY(548, in: size)
             let shareActionHeight = max(shareLabel.fontSize * 1.05, 16 * fontScale)
             let hasSupportContent = !progressLabel.isHidden || !gamesLabel.isHidden
-            let restartSize = CGSize(width: 214 * masterScaleX(for: size), height: 78 * masterScaleY(for: size))
-            let desiredRestartCenterY = masterTopCenterY(804, height: 78, in: size)
+            let restartSize = CGSize(width: 216 * masterScaleX(for: size), height: 76 * masterScaleY(for: size))
+            let desiredRestartCenterY = masterTopCenterY(818, height: 78, in: size)
             let trayTop: CGFloat = 80 + 96 + 24
             let minimumRestartTop = trayTop + (isCompactHeight ? 22 : 12)
             let restartCenterY = max(desiredRestartCenterY, minimumRestartTop + restartSize.height * 0.5)
             let restartTopEdge = restartCenterY + restartSize.height * 0.5
-            let minimumShareGap = (isCompactHeight ? 22 : 28) * masterScaleY(for: size)
+            let minimumShareGap = (isCompactHeight ? 26 : 32) * masterScaleY(for: size)
             let minimumShareCenterY = restartTopEdge + minimumShareGap + shareActionHeight * 0.5
-            let badgeDropY = hasHonorBadge ? (2 * fontScale) : 0
             let scoreLiftY = (isZeroScoreTerminal ? (10 * fontScale) : (isWeakScoreTerminal ? (7 * fontScale) : (4 * fontScale))) + (hasHonorBadge ? (2 * fontScale) : 0)
-            let detailLiftY = (isZeroScoreTerminal ? (13 * fontScale) : (isWeakScoreTerminal ? (10 * fontScale) : (8 * fontScale))) + (hasHonorBadge ? (3 * fontScale) : (2 * fontScale))
+            let detailLiftY = (isZeroScoreTerminal ? (10 * fontScale) : (isWeakScoreTerminal ? (8 * fontScale) : (6 * fontScale))) + (hasHonorBadge ? (2 * fontScale) : (1.5 * fontScale))
 
             captionLabel.position = CGPoint(x: centerX, y: headingY)
-            badgeLabel.position = CGPoint(x: centerX + (0.2 * fontScale), y: badgeY - badgeDropY + (0.35 * fontScale))
-            badgeCapsule.isHidden = true
-            if hasHonorBadge {
-                let text = badgeLabel.text ?? ""
-                let badgeTextWidth = badgeLabel.fontSize * CGFloat(text.count) * 0.47
-                let capsuleWidth = max(92 * scaleX, badgeTextWidth + 20 * fontScale)
-                let capsuleHeight = 16 * scaleY
-                badgeCapsule.path = CGPath(
-                    roundedRect: CGRect(
-                        x: -capsuleWidth * 0.5,
-                        y: -capsuleHeight * 0.5,
-                        width: capsuleWidth,
-                        height: capsuleHeight
-                    ),
-                    cornerWidth: 3 * fontScale,
-                    cornerHeight: 3 * fontScale,
-                    transform: nil
-                )
-                badgeCapsule.position = CGPoint(x: centerX, y: badgeLabel.position.y - badgeLabel.fontSize * 0.12)
-                badgeCapsule.fillColor = UIColor(hex: "17121A").withAlphaComponent(isDaily ? 0.50 : 0.44)
-                badgeCapsule.strokeColor = UIColor(hex: "C6AB68").withAlphaComponent(isDaily ? 0.24 : 0.18)
-                badgeCapsule.isHidden = false
-            } else {
-                badgeCapsule.isHidden = true
-            }
+            badgeLabel.position = CGPoint(x: centerX, y: badgeY + (hasHonorBadge ? 0.20 * fontScale : 0))
 
             scoreLabel.position = CGPoint(x: centerX, y: scoreY + scoreLiftY)
             scoreShadowLabel.position = CGPoint(
@@ -792,16 +765,16 @@ final class GameScene: SKScene {
             scoreField.position = CGPoint(x: centerX, y: scoreLabel.position.y - scoreLabel.fontSize * 0.01)
             scoreField.fillColor = UIColor(hex: "060914").withAlphaComponent(isZeroScoreTerminal ? 0.46 : (isWeakScoreTerminal ? 0.38 : 0.32))
             scoreField.strokeColor = UIColor.white.withAlphaComponent(isZeroScoreTerminal ? 0.012 : 0.008)
-            detailLabel.position = CGPoint(x: centerX, y: detailY + detailLiftY + (2 * fontScale))
+            detailLabel.position = CGPoint(x: centerX, y: detailY + detailLiftY + (1.2 * fontScale))
 
-            let supportTopGap = hasSupportContent ? (44 * fontScale) : (40 * fontScale)
+            let supportTopGap = hasSupportContent ? (52 * fontScale) : (48 * fontScale)
             var supportCenterY = detailLabel.position.y - supportTopGap
-            let supportUpperOffset = 7 * fontScale
-            let supportLowerOffset = 7 * fontScale
-            let supportToShareGap = (isCompactHeight ? 24 : 28) * fontScale
-            let supportSingleLineDescent = 8 * fontScale
-            let supportDoubleLineDescent = 10 * fontScale
-            let shareToRestartGap = (isCompactHeight ? 22 : 28) * scaleY
+            let supportUpperOffset = 8 * fontScale
+            let supportLowerOffset = 8 * fontScale
+            let supportToShareGap = (isCompactHeight ? 30 : 34) * fontScale
+            let supportSingleLineDescent = 9 * fontScale
+            let supportDoubleLineDescent = 11 * fontScale
+            let shareToRestartGap = (isCompactHeight ? 30 : 34) * scaleY
             let shareLabelOpticalOffset = shareLabel.fontSize * 0.12
 
             let supportLineBottomOffset: CGFloat = (!progressLabel.isHidden && !gamesLabel.isHidden) ? supportDoubleLineDescent : supportSingleLineDescent
@@ -841,18 +814,19 @@ final class GameScene: SKScene {
                 let shareText = shareLabel.text ?? ""
                 let shareLabelWidth = max(shareLabel.frame.width, shareLabel.fontSize * CGFloat(shareText.count) * 0.44)
                 let shareIconWidth = shareIcon.size.width * 0.88
-                let shareIconGap = 7 * fontScale
-                let shareGroupWidth = shareIconWidth + shareIconGap + shareLabelWidth
-                let shareLeftEdge = centerX - shareGroupWidth * 0.5
+                let shareIconGap = 6 * fontScale
+                let shareCenterYAdjusted = shareCenterY - (isDaily ? 4.8 * fontScale : 2.4 * fontScale)
+                let shareTextCenterX = centerX
+                let shareTextLeftEdge = shareTextCenterX - shareLabelWidth * 0.5
                 shareIcon.position = CGPoint(
-                    x: shareLeftEdge + shareIconWidth * 0.5,
-                    y: shareCenterY + shareLabel.fontSize * 0.02
+                    x: shareTextLeftEdge - shareIconGap - shareIconWidth * 0.5,
+                    y: shareCenterYAdjusted + shareLabel.fontSize * 0.01
                 )
                 shareLabel.position = CGPoint(
-                    x: shareLeftEdge + shareIconWidth + shareIconGap + shareLabelWidth * 0.5,
-                    y: shareCenterY + shareLabelOpticalOffset
+                    x: shareTextCenterX,
+                    y: shareCenterYAdjusted + shareLabelOpticalOffset
                 )
-                shareIcon.setScale(0.88)
+                shareIcon.setScale(isDaily ? 0.82 : 0.88)
                 shareIcon.isHidden = false
             }
 
@@ -875,9 +849,9 @@ final class GameScene: SKScene {
                 transform: nil
             )
             restartButton.position = CGPoint(x: centerX, y: restartCenterY)
-            restartButton.fillColor = UIColor(hex: "635EE6")
-            restartButton.strokeColor = UIColor(hex: "B5BCFF").withAlphaComponent(0.23)
-            restartButton.lineWidth = 1.05
+            restartButton.fillColor = UIColor(hex: "5755C8")
+            restartButton.strokeColor = UIColor(hex: "C7CEFF").withAlphaComponent(0.17)
+            restartButton.lineWidth = 0.95
 
             restartBase.path = CGPath(
                 roundedRect: CGRect(
@@ -912,8 +886,21 @@ final class GameScene: SKScene {
                 cornerHeight: 22 * fontScale,
                 transform: nil
             )
-            restartLabel.fontSize = 22 * fontScale
-            restartLabel.position = CGPoint(x: 0, y: 2.1 * fontScale)
+            let sheenWidth = restartSize.width - (14 * masterScaleX(for: size))
+            let sheenHeight = max(14 * masterScaleY(for: size), restartSize.height * 0.34)
+            restartSheen.path = CGPath(
+                roundedRect: CGRect(
+                    x: -sheenWidth * 0.5,
+                    y: restartSize.height * 0.5 - sheenHeight - (5 * masterScaleY(for: size)),
+                    width: sheenWidth,
+                    height: sheenHeight
+                ),
+                cornerWidth: 16 * fontScale,
+                cornerHeight: 16 * fontScale,
+                transform: nil
+            )
+            restartLabel.fontSize = 20.2 * fontScale
+            restartLabel.position = CGPoint(x: 0, y: 1.1 * fontScale)
 
             // Keep the monument shell anchored to the live caption/detail stack.
             let monumentFieldLeading: CGFloat = 118
@@ -1421,7 +1408,8 @@ final class GameScene: SKScene {
             let ritualIdentity = DailyRitualIdentity.identity(for: dayID)
             let ritualClosure = DailyRitualClosure.closure(
                 identity: ritualIdentity,
-                completion: lastDailyCompletion
+                completion: lastDailyCompletion,
+                didClearAny: engine.didClearAny
             )
             caption = ritualClosure.completionCaption
             badge = ritualClosure.badge
@@ -1429,7 +1417,6 @@ final class GameScene: SKScene {
             progress = ritualClosure.progress
             restartText = ritualClosure.replayLabel
         } else {
-            restartText = VexloStrings.Overlay.playAgain
             let pressureContext = engine.boardPressureContext()
             let runSummary = RunReadingSummary.summary(
                 context: RunReadingContext(
@@ -1444,6 +1431,7 @@ final class GameScene: SKScene {
                     completedRuns: GameCenterService.shared.completedRunCount
                 )
             )
+            restartText = runSummary.replayLabel
             caption = runSummary.caption
             badge = runSummary.badge
             detail = runSummary.readingDetail
@@ -1642,7 +1630,8 @@ final class GameScene: SKScene {
         previousScore: Int,
         previousCombo: Int,
         clearedCoords: [HexCoordinate],
-        clearedLineCount: Int
+        clearedLineCount: Int,
+        clearedJewelColors: [HexCoordinate: UIColor]
     ) {
         let clearedSet = Set(clearedCoords)
         let placementOnly = placedCoords.filter { !clearedSet.contains($0) }
@@ -1674,11 +1663,14 @@ final class GameScene: SKScene {
                 }
                 if !clearedCoords.isEmpty {
                     let completingPlacement = Set(placedCoords).intersection(clearedSet)
+                    self.pendingLineClearCoords = Set(clearedCoords)
                     self.animateLineClear(
                         coords: clearedCoords,
-                        completingPlacementCoords: completingPlacement
+                        completingPlacementCoords: completingPlacement,
+                        clearedJewelColors: clearedJewelColors
                     ) { [weak self] in
                         guard let self else { return }
+                        self.pendingLineClearCoords.removeAll()
                         self.syncAll()
                         if shouldPresentCeremony {
                             self.hasPresentedRunThresholdCeremony = true
@@ -3153,6 +3145,14 @@ final class GameScene: SKScene {
         }
         let prevScore = engine.scoreEngine.score
         let prevCombo = engine.scoreEngine.combo
+        let clearedJewelColors = ClearConsequenceSurface.clearedCellJewelColors(
+            clearedCoordinates: preview.resolution.clearedCellCoordinates,
+            placedCoordinates: preview.resolution.placedCoordinates,
+            pieceColor: piece.color,
+            boardColorAt: { [engine] coord in
+                engine.board.color(at: coord)
+            }
+        )
         let committed = engine.place(piece, at: anchor, slotIndex: dragSlotIndex)
 
         OnboardingService.shared.markPlacementLearned()
@@ -3169,7 +3169,8 @@ final class GameScene: SKScene {
             previousScore: prevScore,
             previousCombo: prevCombo,
             clearedCoords: committed.clearedCellCoordinates,
-            clearedLineCount: committed.clearedLineCount
+            clearedLineCount: committed.clearedLineCount,
+            clearedJewelColors: clearedJewelColors
         )
     }
 
@@ -3213,46 +3214,52 @@ final class GameScene: SKScene {
             didClearAny: engine.didClearAny
         )
         let includesClearConsequences = RunThresholdSurface.includesClearConsequencesInDragHighlight(
-            for: thresholdPhase
-        )
-        let includeBoardReliefContacts = RunThresholdSurface.includesBoardReliefContactsInDragHighlight(
             for: thresholdPhase,
-            isGentleOpeningPhase: engine.isGentleOpeningPhase
+            clearedLineCount: resolution.clearedLineCount
         )
         let nextCells = PieceSpecificDragHighlight.coordinates(
             resolution: resolution,
             evaluation: evaluation,
             occupiedCoordinates: occupiedCoordinates,
             includesClearConsequences: includesClearConsequences,
-            includeBoardReliefContacts: includeBoardReliefContacts
+            includeBoardReliefContacts: ClearConsequenceSurface.includesBoardReliefContactsInDragHighlight
         )
         for coord in dragHighlightedCells.subtracting(nextCells) {
             restoreBoardCell(at: coord)
         }
         dragHighlightedCells = nextCells
+        let showsClearConsequence = includesClearConsequences && !clearCells.isEmpty
+        let multiClearPreview = previewProfile == .multiClearPlacement
         for coord in nextCells {
             guard let node = cellNodes[coord] else { continue }
             suppressDragPreviewMaskingLayers(on: node)
+            let inClearConsequence = showsClearConsequence && clearCells.contains(coord)
             if let boardColor = engine.board.color(at: coord) {
+                if inClearConsequence {
+                    applyClearConsequenceOccupiedDragPreview(
+                        to: node,
+                        boardColor: boardColor,
+                        multiClear: multiClearPreview
+                    )
+                    continue
+                }
                 applyFilledCellStyle(node, color: boardColor)
                 suppressDragPreviewMaskingLayers(on: node)
-                if clearCells.contains(coord) {
-                    applyOccupiedClearLineDragPreview(to: node, profile: previewProfile)
-                    continue
-                }
-                if includeBoardReliefContacts,
-                   !coords.contains(coord) {
-                    node.strokeColor = UIColor.white.withAlphaComponent(0.24)
-                    node.lineWidth = 0.98
-                    node.alpha = 1.0
-                    node.setScale(1.0)
-                    continue
-                }
+                continue
             }
             node.childNode(withName: "board.emptyMaterial")?.isHidden = true
-            let emptyDragProfile = Self.footprintDragPreviewProfile(
-                previewProfile: previewProfile,
-                includesClearConsequences: includesClearConsequences
+            if inClearConsequence {
+                applyClearConsequenceEmptyDragPreview(
+                    to: node,
+                    multiClear: multiClearPreview,
+                    accentColor: dragPiece?.color
+                )
+                continue
+            }
+            let emptyDragProfile = ClearConsequenceSurface.footprintDragProfile(
+                resolutionProfile: previewProfile,
+                evaluationTier: evaluation?.tier,
+                showsClearConsequence: showsClearConsequence
             )
             applyEmptyCellDragPreview(
                 to: node,
@@ -3271,7 +3278,7 @@ final class GameScene: SKScene {
     }
 
     private func clearHighlights() {
-        for coord in dragHighlightedCells {
+        for coord in dragHighlightedCells where !pendingLineClearCoords.contains(coord) {
             restoreBoardCell(at: coord)
         }
         dragHighlightedCells.removeAll()
@@ -3337,85 +3344,23 @@ final class GameScene: SKScene {
         }
     }
 
-    private func applyOccupiedClearLineDragPreview(to node: SKShapeNode, profile: DragPreviewProfile) {
-        node.setScale(1.0)
-        node.alpha = 1.0
-        switch profile {
-        case .clearPlacement:
-            node.strokeColor = UIColor.white.withAlphaComponent(0.26)
-            node.lineWidth = 1.02
-        case .multiClearPlacement:
-            node.strokeColor = UIColor.white.withAlphaComponent(0.32)
-            node.lineWidth = 1.08
-        default:
-            node.strokeColor = UIColor.white.withAlphaComponent(0.22)
-            node.lineWidth = 0.96
-        }
-    }
-
     private func animateLineClear(
         coords: [HexCoordinate],
         completingPlacementCoords: Set<HexCoordinate>,
+        clearedJewelColors: [HexCoordinate: UIColor],
         completion: @escaping () -> Void
     ) {
-        guard !coords.isEmpty else {
-            completion()
-            return
-        }
-
-        let sortCoords: (HexCoordinate, HexCoordinate) -> Bool = { lhs, rhs in
-            (lhs.col, lhs.row) < (rhs.col, rhs.row)
-        }
-        let completing = coords.filter { completingPlacementCoords.contains($0) }.sorted(by: sortCoords)
-        let remainder = coords.filter { !completingPlacementCoords.contains($0) }.sorted(by: sortCoords)
-        let sorted = completing + remainder
-        let stagger: TimeInterval = 0.016
-        let brightenDuration: TimeInterval = 0.08
-        let dissolveDuration: TimeInterval = 0.16
-
-        if prefersReducedMotion {
-            for coord in sorted {
-                guard let node = cellNodes[coord] else { continue }
-                node.removeAllActions()
-                applyEmptyCellAppearance(for: coord, node: node)
-                node.setScale(1.0)
-                node.alpha = 1.0
-            }
-            completion()
-            return
-        }
-
-        for (index, coord) in sorted.enumerated() {
-            guard let node = cellNodes[coord] else { continue }
-            node.removeAllActions()
-            suppressDragPreviewMaskingLayers(on: node)
-            let wait = SKAction.wait(forDuration: TimeInterval(index) * stagger)
-            let brighten = SKAction.run {
-                node.alpha = 1.0
-                node.fillColor = UIColor(hex: "C8E8DC").withAlphaComponent(0.36)
-                node.strokeColor = UIColor.white.withAlphaComponent(0.26)
-                node.lineWidth = 1.0
-                node.setScale(1.0)
-            }
-            let dissolve = SKAction.group([
-                SKAction.fadeAlpha(to: 0.0, duration: dissolveDuration),
-                SKAction.scale(to: 0.98, duration: dissolveDuration)
-            ])
-            let restore = SKAction.run { [weak self] in
-                guard let self else { return }
-                node.setScale(1.0)
-                node.alpha = 1.0
-                self.applyEmptyCellAppearance(for: coord, node: node)
-            }
-            node.run(SKAction.sequence([wait, brighten, dissolve, restore]))
-        }
-
-        let lastIndex = max(0, sorted.count - 1)
-        let total = TimeInterval(lastIndex) * stagger + brightenDuration + dissolveDuration + 0.06
-        run(SKAction.sequence([
-            SKAction.wait(forDuration: total),
-            SKAction.run(completion)
-        ]))
+        runLineClearCommitAnimation(
+            coords: coords,
+            completingPlacementCoords: completingPlacementCoords,
+            clearedJewelColors: clearedJewelColors,
+            prefersReducedMotion: prefersReducedMotion,
+            cellNodes: cellNodes,
+            applyEmptyCellAppearance: { [weak self] coord, node in
+                self?.applyEmptyCellAppearance(for: coord, node: node)
+            },
+            completion: completion
+        )
     }
 
     private func handleFirstClearRecognitionIfNeeded(
@@ -3626,13 +3571,21 @@ final class GameScene: SKScene {
                 (isOpeningState ? (engine.isDailyChallenge ? 0.026 : 0.02) : (engine.isDailyChallenge ? 0.018 : 0.014))
         )
         material.strokeColor = UIColor.clear
-        if let h = node.childNode(withName: "fillHighlight") as? SKShapeNode { h.isHidden = true }
+        material.alpha = 1.0
+        if let fillHighlight = node.childNode(withName: "fillHighlight") as? SKShapeNode {
+            fillHighlight.isHidden = true
+            fillHighlight.alpha = 1.0
+            fillHighlight.fillColor = UIColor(white: 1, alpha: 0.148)
+        }
         if let highlight = node.childNode(withName: "highlight") as? SKShapeNode {
             highlight.isHidden = false
+            highlight.alpha = 1.0
+            highlight.fillColor = UIColor(white: 1, alpha: 0.09)
+            highlight.strokeColor = .clear
         }
     }
 
-    private func applyFilledCellStyle(_ node: SKShapeNode, color: UIColor) {
+    func applyFilledCellStyle(_ node: SKShapeNode, color: UIColor) {
         let isTerminal = terminalOverlayOwnsResultContext
         let isCompactTerminal = isTerminal && size.height < 760
         let isWeakScoreTerminal = isTerminal && !engine.isDailyChallenge && engine.scoreEngine.score < 10

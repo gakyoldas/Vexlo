@@ -16,6 +16,20 @@ struct DailyChallengeCompletion {
     let streakCount: Int
 }
 
+enum DailyToneVariant: Int, CaseIterable {
+    case glacial
+    case lucid
+    case iris
+
+    var boardCharacter: PieceFactory.BoardCharacter {
+        switch self {
+        case .glacial: return .open
+        case .lucid: return .balanced
+        case .iris: return .focused
+        }
+    }
+}
+
 final class DailyChallengeService {
     static let shared = DailyChallengeService()
 
@@ -136,6 +150,20 @@ final class DailyChallengeService {
         dayID.utf8.reduce(UInt64(1469598103934665603)) { partial, byte in
             (partial ^ UInt64(byte)) &* 1099511628211
         }
+    }
+
+    func weekdayTitle(for dayID: String) -> String {
+        guard let date = date(for: dayID) else { return "" }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = calendar.locale ?? .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("EEEE")
+        return formatter.string(from: date)
+    }
+
+    func toneVariant(for dayID: String) -> DailyToneVariant {
+        let index = Int(seed(for: dayID) % UInt64(DailyToneVariant.allCases.count))
+        return DailyToneVariant(rawValue: index) ?? .glacial
     }
 
     private func hasCompleted(dayID: String) -> Bool {

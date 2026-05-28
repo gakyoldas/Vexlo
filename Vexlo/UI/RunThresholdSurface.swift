@@ -20,16 +20,12 @@ enum RunThresholdSurface {
         previousScore == 0 && newScore > 0 && clearedCellCount > 0
     }
 
-    /// Pre-threshold drag highlights footprint only — no line-wide clear bait.
-    static func includesClearConsequencesInDragHighlight(for phase: RunThresholdPhase) -> Bool {
-        phase == .postThreshold
-    }
-
-    static func includesBoardReliefContactsInDragHighlight(
+    /// Pre-threshold still shows full consequence only for real clear-producing placements.
+    static func includesClearConsequencesInDragHighlight(
         for phase: RunThresholdPhase,
-        isGentleOpeningPhase: Bool
+        clearedLineCount: Int
     ) -> Bool {
-        phase == .postThreshold && !isGentleOpeningPhase
+        phase == .postThreshold || clearedLineCount > 0
     }
 
     static func shouldPresentThresholdCeremony(

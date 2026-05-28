@@ -4769,6 +4769,63 @@ struct AtelierCatalogPersistenceRegressionTests {
 }
 
 @Suite(.serialized)
+struct AtelierEntitlementCompositionRegressionTests {
+    private func isolatedPersistence() -> AtelierPersistenceService {
+        let suiteName = "nf.vexlo.atelier.entitlement.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return AtelierPersistenceService(defaults: defaults)
+    }
+
+    @Test
+    func emptyGrantsProduceEmptyOwnedCosmeticIDsInMonetizationSnapshot() {
+        let persistence = isolatedPersistence()
+        MonetizationService.shared.testingSetAtelierPersistence(persistence)
+        defer { MonetizationService.shared.testingSetAtelierPersistence(.shared) }
+        MonetizationService.shared.testingRefreshEntitlementsFromDependencies()
+        #expect(MonetizationService.shared.entitlements.ownedCosmeticIDs.isEmpty)
+        for defaultID in AtelierCatalog.defaultFreeOwnedIDs {
+            #expect(!MonetizationService.shared.entitlements.ownedCosmeticIDs.contains(defaultID))
+        }
+    }
+
+    @Test
+    func grantedAtelierIDsFlowIntoMonetizationEntitlementSnapshot() {
+        let persistence = isolatedPersistence()
+        persistence.grant(cosmeticID: .boardFrameArchive)
+        MonetizationService.shared.testingSetAtelierPersistence(persistence)
+        defer { MonetizationService.shared.testingSetAtelierPersistence(.shared) }
+        MonetizationService.shared.testingRefreshEntitlementsFromDependencies()
+        let owned = MonetizationService.shared.entitlements.ownedCosmeticIDs
+        #expect(owned == [AtelierCosmeticID.boardFrameArchive.rawValue])
+        #expect(MonetizationService.shared.entitlements.ownsCosmetic(id: AtelierCosmeticID.boardFrameArchive.rawValue))
+    }
+
+    @Test
+    func cosmeticGrantDoesNotChangeRemovesRewardedAdRequirement() {
+        let persistence = isolatedPersistence()
+        persistence.grant(cosmeticID: .boardFrameArchive)
+        MonetizationService.shared.testingSetAtelierPersistence(persistence)
+        defer { MonetizationService.shared.testingSetAtelierPersistence(.shared) }
+        MonetizationService.shared.testingRefreshEntitlementsFromDependencies()
+        #expect(!MonetizationService.shared.entitlements.removesRewardedAdRequirement)
+    }
+
+    @Test
+    func cosmeticGrantDoesNotChangeSupporterOwnedFromLiveSource() {
+        MonetizationService.shared.testingRefreshEntitlementsFromDependencies()
+        let supporterBefore = MonetizationService.shared.entitlements.supporterOwned
+        let persistence = isolatedPersistence()
+        persistence.grant(cosmeticID: .boardFrameArchive)
+        MonetizationService.shared.testingSetAtelierPersistence(persistence)
+        defer { MonetizationService.shared.testingSetAtelierPersistence(.shared) }
+        MonetizationService.shared.testingRefreshEntitlementsFromDependencies()
+        #expect(MonetizationService.shared.entitlements.supporterOwned == supporterBefore)
+        #expect(MonetizationService.shared.capabilities.supporterOwned == supporterBefore)
+    }
+}
+
+@Suite(.serialized)
 struct RewardedAdsConfigurationRegressionTests {
     @Test
     func releaseConfigWithoutPlistValuesIsUnavailable() {

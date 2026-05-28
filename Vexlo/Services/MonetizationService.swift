@@ -81,6 +81,7 @@ final class MonetizationService {
 
     private let defaults = UserDefaults.standard
     private let policy = MonetizationPolicy()
+    private var atelierPersistence: AtelierPersistenceService
     private(set) var entitlements = EntitlementSnapshot.none
     private(set) var capabilities = MonetizationCapabilities()
     private var rewardedFoundationConfigured = false
@@ -89,7 +90,9 @@ final class MonetizationService {
     private var runState = MonetizationRunState()
     private var testingCanPresentOverrides: [MonetizationOfferKind: Bool] = [:]
 
-    private init() {}
+    private init(atelierPersistence: AtelierPersistenceService = .shared) {
+        self.atelierPersistence = atelierPersistence
+    }
 
     func beginSessionIfNeeded() {
         configureRewardedFoundationIfNeeded()
@@ -232,7 +235,8 @@ final class MonetizationService {
 
     private func refreshCapabilities() {
         entitlements = EntitlementCatalog.liveSnapshot(
-            supporterOwned: SupporterPackService.shared.isOwned
+            supporterOwned: SupporterPackService.shared.isOwned,
+            grantedAtelierCosmeticIDs: atelierPersistence.loadGrantedOwnedIDs()
         )
         let availability = RewardedAdsService.shared.availability
         capabilities.rewardedContinueAvailable = availability.continueAfterLossAvailable
@@ -312,5 +316,13 @@ extension MonetizationService {
     func testingApplyEntitlementSnapshot(_ snapshot: EntitlementSnapshot) {
         entitlements = snapshot
         capabilities.supporterOwned = snapshot.supporterOwned
+    }
+
+    func testingSetAtelierPersistence(_ service: AtelierPersistenceService) {
+        atelierPersistence = service
+    }
+
+    func testingRefreshEntitlementsFromDependencies() {
+        refreshCapabilities()
     }
 }

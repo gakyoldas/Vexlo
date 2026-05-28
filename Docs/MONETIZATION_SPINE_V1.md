@@ -104,8 +104,10 @@ Current scope:
 - Categories reuse `AtelierCosmeticCategory` from ethical monetization policy (`boardFrameFinish`, `pieceMineralPalette`, `hudAccentTone`, `shareCardFinish`, `trayRestMarkFinish`)
 - Default/free cosmetics are effectively owned without persistence; locked seed items stay unowned until granted
 - Invalid or unowned selections resolve to the category default
+- `EntitlementSnapshot.ownedCosmeticIDs` includes only explicitly granted atelier IDs from `AtelierPersistenceService.loadGrantedOwnedIDs()` — not catalog defaults
+- `MonetizationService.refreshCapabilities()` composes grants at the entitlement read boundary (Phase 4.5)
 
-Deferred: atelier/gallery UI, cosmetic StoreKit products, visual application to board/HUD/share/tray, entitlement wiring from live persistence into `MonetizationService` (compose via `EntitlementCatalog.liveSnapshot(grantedAtelierCosmeticIDs:)` when product approves).
+Deferred: atelier/gallery UI, cosmetic StoreKit products, visual application to board/HUD/share/tray.
 
 Forbidden grants (unchanged): score/combo power, extra continue, mastery/codex/reader unlocks, streak insurance, scarcity timers, gameplay hints.
 

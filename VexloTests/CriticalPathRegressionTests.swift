@@ -4696,6 +4696,84 @@ struct EntitlementCatalogRegressionTests {
     }
 }
 
+@Suite(.serialized)
+struct RewardedAdsConfigurationRegressionTests {
+    @Test
+    func releaseConfigWithoutPlistValuesIsUnavailable() {
+        let config = RewardedAdsConfiguration.resolve(
+            appID: nil,
+            continuePlistValue: nil,
+            rerollPlistValue: nil,
+            allowDebugPlacementFallback: false
+        )
+        #expect(!config.isSDKConfigured)
+        #expect(config.adUnitID(for: .continueAfterLoss) == nil)
+        #expect(config.adUnitID(for: .rerollTrayPiece) == nil)
+        #expect(!config.diagnostic.isRewardedCommerceConfigured)
+        #expect(config.diagnostic.blockers.contains(.missingAppID))
+        #expect(config.diagnostic.blockers.contains(.missingContinueAdUnitID))
+        #expect(config.diagnostic.blockers.contains(.missingRerollAdUnitID))
+    }
+
+    @Test
+    func debugFallbackUsesTestUnitsOnlyWhenAllowed() {
+        let config = RewardedAdsConfiguration.resolve(
+            appID: "ca-app-pub-test~123",
+            continuePlistValue: nil,
+            rerollPlistValue: nil,
+            allowDebugPlacementFallback: true
+        )
+        #expect(config.isSDKConfigured)
+        #expect(config.usesDebugTestAdUnits)
+        #expect(config.adUnitID(for: .continueAfterLoss) == "ca-app-pub-3940256099942544/1712485313")
+        #expect(config.adUnitID(for: .rerollTrayPiece) == "ca-app-pub-3940256099942544/1712485313")
+    }
+
+    @Test
+    func releaseNeverUsesDebugFallbackWhenPlistMissing() {
+        let config = RewardedAdsConfiguration.resolve(
+            appID: "ca-app-pub-prod~123",
+            continuePlistValue: nil,
+            rerollPlistValue: nil,
+            allowDebugPlacementFallback: false
+        )
+        #expect(config.isSDKConfigured)
+        #expect(!config.usesDebugTestAdUnits)
+        #expect(config.adUnitID(for: .continueAfterLoss) == nil)
+    }
+
+    @Test
+    func fullyConfiguredReleaseDiagnosticHasNoPlacementBlockers() {
+        let config = RewardedAdsConfiguration.resolve(
+            appID: "ca-app-pub-prod~123",
+            continuePlistValue: "ca-app-pub-prod/continue",
+            rerollPlistValue: "ca-app-pub-prod/reroll",
+            allowDebugPlacementFallback: false
+        )
+        #expect(!config.diagnostic.blockers.contains(.missingAppID))
+        #expect(!config.diagnostic.blockers.contains(.missingContinueAdUnitID))
+        #expect(!config.diagnostic.blockers.contains(.missingRerollAdUnitID))
+        #expect(!config.diagnostic.usesDebugTestAdUnits)
+        #expect(config.isPlacementConfigured(.continueAfterLoss))
+        #expect(config.isPlacementConfigured(.rerollTrayPiece))
+        #expect(RewardedPlacement.continueAfterLoss.infoPlistAdUnitKey == RewardedAdsConfigKey.continueAdUnitID)
+        #expect(RewardedPlacement.rerollTrayPiece.infoPlistAdUnitKey == RewardedAdsConfigKey.rerollAdUnitID)
+    }
+
+    @Test
+    func supporterBypassDoesNotDependOnAdConfiguration() {
+        let snapshot = EntitlementCatalog.liveSnapshot(supporterOwned: true)
+        let config = RewardedAdsConfiguration.resolve(
+            appID: nil,
+            continuePlistValue: nil,
+            rerollPlistValue: nil,
+            allowDebugPlacementFallback: false
+        )
+        #expect(snapshot.removesRewardedAdRequirement)
+        #expect(!config.diagnostic.isRewardedCommerceConfigured)
+    }
+}
+
 private func seedMonetizationMaturityForEthicalWiringTests() {
     let defaults = UserDefaults.standard
     defaults.set(4, forKey: "nf_vexlo_monetization_session_count")

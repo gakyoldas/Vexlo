@@ -60,6 +60,37 @@ Reserved product ID namespace (examples, not App Store active):
 - Forced full-screen post-run paywall before Play Again
 - Monetization that unlocks mastery, codex, or reader profile
 
+## Rewarded ads configuration (Phase 3)
+
+Rewarded-only policy:
+
+- Allowed: rewarded continue after terminal loss (`continueAfterLoss`)
+- Allowed: rewarded tray reroll (`rerollTrayPiece`)
+- Forbidden: banners, interstitials, active gameplay ad interruptions, forced ads
+
+Required Info.plist keys (no production values in source — supply at release via plist or build settings):
+
+- `GADApplicationIdentifier` — AdMob app ID
+- `VexloRewardedContinueAdUnitID` — rewarded unit for terminal continue
+- `VexloRewardedRerollAdUnitID` — rewarded unit for tray reroll
+
+Placeholder empty strings in `Vexlo/Info.plist` are intentional until release IDs are set. Empty values mean unavailable in release builds.
+
+Debug behavior:
+
+- DEBUG builds may fall back to Google test ad unit IDs only when a placement plist value is missing.
+- Release builds never use debug test IDs; missing plist values keep that placement unconfigured.
+- `RewardedAdsConfiguration.usesDebugTestAdUnits` records whether debug fallback is active.
+
+Capability matrix (rewarded commerce path):
+
+- Available: SDK present, plist fully configured, ad preloaded, MonetizationService policy allows, ethical gate allows, supporter bypass not used yet.
+- Unavailable (config): missing app ID and/or placement unit ID, SDK module absent, or ad not yet loaded.
+- Bypassed (entitlement): `EntitlementSnapshot.removesRewardedAdRequirement` (supporter today) — offer may proceed without showing rewarded ad; same per-run caps apply.
+- Hidden (ethics/policy): daily mode, early-player suppression, insufficient reading value (continue), run state, offer caps — independent of ad config; EthicalMonetizationAttachment + MonetizationService gates unchanged.
+
+Diagnostics: `RewardedAdsService.configurationDiagnostic` and `RewardedAdsConfiguration.diagnostic` expose blockers without user-facing copy.
+
 ## Engineering boundaries
 
 - `EntitlementCatalog` + `EntitlementSnapshot`: read model only; no StoreKit here.

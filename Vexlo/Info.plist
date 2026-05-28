@@ -36,5 +36,11 @@
 		<key>UIColorName</key>
 		<string>Black</string>
 	</dict>
+	<key>GADApplicationIdentifier</key>
+	<string></string>
+	<key>VexloRewardedContinueAdUnitID</key>
+	<string></string>
+	<key>VexloRewardedRerollAdUnitID</key>
+	<string></string>
 </dict>
 </plist>

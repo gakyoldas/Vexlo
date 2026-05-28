@@ -1,0 +1,15 @@
+# Xcode / Swift
+.DS_Store
+*.xcuserstate
+**/xcuserdata/
+DerivedData/
+.deriveddata/
+
+# Local verification artifacts
+.visual-verify-opening.png
+
+# Audio import staging (keep out of app target sync root)
+Vexlo/sfx_*.wav
+Tools/audio/import_stash/
+Tools/audio/final/
+Tools/_uncommitted_stash/

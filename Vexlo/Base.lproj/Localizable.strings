@@ -46,11 +46,19 @@
 "overlay.supporter_owned" = "Supporter Owned";
 "overlay.challenge_friends" = "Challenge Friends";
 "overlay.play_together" = "Play Together";
+
+"async_competition.todays_table" = "Today's table";
+"async_competition.send_reading_challenge" = "Send a reading challenge";
+"async_competition.share_this_run" = "Share this run";
+"async_competition.all_time_scores" = "All-time scores";
+"async_competition.daily_share_subject" = "Vexlo — Today's board";
+"async_competition.daily_share_subject_headline" = "Vexlo — %@";
+"async_competition.daily_share_invite" = "Play today's board in Vexlo.";
 "overlay.share" = "Share";
 "overlay.one_cleaner_run" = "One cleaner run was there";
 "overlay.run_count" = "Run %d";
 "overlay.streak_format" = "Streak %d";
-"overlay.gap_to_best" = "%d to best";
+"overlay.gap_to_best" = "Close %d to best";
 
 "utility.sound_on" = "Sound On";
 "utility.sound_off" = "Sound Off";
@@ -78,6 +86,14 @@
 "accessibility.leaderboard_hint" = "Shows Game Center scores";
 "accessibility.daily_activity" = "Daily Activity";
 "accessibility.daily_activity_hint" = "Opens today's Game Center activity";
+"accessibility.todays_table" = "Today's table";
+"accessibility.todays_table_hint" = "Opens today's shared board in Game Center";
+"accessibility.send_reading_challenge" = "Send a reading challenge";
+"accessibility.send_reading_challenge_hint" = "Opens the Game Center challenge flow for this run";
+"accessibility.share_this_run" = "Share this run";
+"accessibility.share_this_run_hint" = "Opens the Game Center activity for this run";
+"accessibility.all_time_scores" = "All-time scores";
+"accessibility.all_time_scores_hint" = "Shows Game Center all-time scores";
 "accessibility.challenge_friends" = "Challenge Friends";
 "accessibility.challenge_friends_hint" = "Opens the Game Center challenge flow";
 "accessibility.play_together" = "Play Together";

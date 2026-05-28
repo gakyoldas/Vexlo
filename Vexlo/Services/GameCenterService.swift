@@ -5,6 +5,7 @@ final class GameCenterService: NSObject, GKGameCenterControllerDelegate {
     static let shared = GameCenterService()
     enum Leaderboard {
         static let score = "com.northfall.vexlo.alltime"
+        static let dailyTable = "com.northfall.vexlo.dailytable"
     }
     enum Challenge {
         static let scoreChase = "com.northfall.vexlo.scorechase"
@@ -23,12 +24,27 @@ final class GameCenterService: NSObject, GKGameCenterControllerDelegate {
         case dailyChallenge
         case normalScoreChase
     }
+
+    static func shouldSubmitDailyTableScore(
+        todayBest: Int,
+        dayID: String,
+        lastSubmittedDayID: String?,
+        lastSubmittedScore: Int
+    ) -> Bool {
+        guard todayBest > 0 else { return false }
+        guard let lastSubmittedDayID else { return true }
+        guard lastSubmittedDayID == dayID else { return true }
+        return todayBest > lastSubmittedScore
+    }
+
     private(set) var isAuthenticated = false
     private(set) var canPresentScoreChallenge = false
     private(set) var canPresentDailyActivity = false
     private(set) var canPresentScoreChaseActivity = false
     private let defaults = UserDefaults.standard
     private let completedRunsKey = "nf_vexlo_gc_completed_runs"
+    private let dailyTableSubmittedDayKey = "nf_vexlo_gc_daily_table_day"
+    private let dailyTableSubmittedScoreKey = "nf_vexlo_gc_daily_table_score"
     private var rootViewControllerProvider: (() -> UIViewController?)?
     private var pendingBestScore: Int = 0
     private var pendingAchievementIDs: Set<String> = []
@@ -65,6 +81,28 @@ final class GameCenterService: NSObject, GKGameCenterControllerDelegate {
                 self.flushPending()
             }
         }
+    }
+
+    func reportDailyTableScore(dayID: String, todayBest: Int) {
+        let lastDayID = defaults.string(forKey: dailyTableSubmittedDayKey)
+        let lastScore = defaults.integer(forKey: dailyTableSubmittedScoreKey)
+        guard Self.shouldSubmitDailyTableScore(
+            todayBest: todayBest,
+            dayID: dayID,
+            lastSubmittedDayID: lastDayID,
+            lastSubmittedScore: lastScore
+        ) else {
+            return
+        }
+        defaults.set(dayID, forKey: dailyTableSubmittedDayKey)
+        defaults.set(todayBest, forKey: dailyTableSubmittedScoreKey)
+        guard isAuthenticated else { return }
+        GKLeaderboard.submitScore(
+            todayBest,
+            context: 0,
+            player: GKLocalPlayer.local,
+            leaderboardIDs: [Leaderboard.dailyTable]
+        ) { _ in }
     }
 
     func reportCompletedRun(

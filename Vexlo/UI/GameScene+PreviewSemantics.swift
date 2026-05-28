@@ -3,7 +3,8 @@ import Foundation
 extension GameScene {
     enum DragPreviewProfile: Equatable {
         case invalidPlacement
-        case validPlacement
+        case survivalPlacement
+        case reliefPlacement
         case clearPlacement
         case multiClearPlacement
     }
@@ -16,22 +17,40 @@ extension GameScene {
         if clearedLineCount == 1 {
             return .clearPlacement
         }
-        return .validPlacement
+        return .survivalPlacement
+    }
+
+    static func dragPreviewProfile(
+        resolution: PlacementResolution,
+        evaluation: PlacementEvaluation?
+    ) -> DragPreviewProfile {
+        guard resolution.isLegal else { return .invalidPlacement }
+        guard let evaluation else {
+            return dragPreviewProfile(
+                isValid: true,
+                clearedLineCount: resolution.clearedLineCount
+            )
+        }
+        switch evaluation.tier {
+        case .expert:
+            return .multiClearPlacement
+        case .constructive:
+            return .clearPlacement
+        case .relief:
+            return .reliefPlacement
+        case .survival:
+            return .survivalPlacement
+        }
     }
 
     static func dragPreviewProfile(for resolution: PlacementResolution) -> DragPreviewProfile {
-        dragPreviewProfile(isValid: resolution.isLegal, clearedLineCount: resolution.clearedLineCount)
+        dragPreviewProfile(resolution: resolution, evaluation: nil)
     }
 
     static func shouldEmphasizeOpeningReliefPlacement(
-        evaluation: PlacementEvaluation?,
         previewProfile: DragPreviewProfile,
         isOpeningState: Bool
     ) -> Bool {
-        guard isOpeningState,
-              previewProfile == .validPlacement,
-              let evaluation,
-              evaluation.tier == .relief else { return false }
-        return true
+        isOpeningState && previewProfile == .reliefPlacement
     }
 }

@@ -28,7 +28,11 @@ struct PlacementEvaluation: Equatable {
             placementCoordinates: resolution.placedCoordinates,
             occupiedCoordinates: occupiedCoordinates
         )
-        let tier = tier(resolution: resolution, reliefContactCount: reliefContactCount)
+        let tier = tier(
+            resolution: resolution,
+            reliefContactCount: reliefContactCount,
+            occupiedCellCount: context.occupiedCellCount
+        )
 
         return PlacementEvaluation(
             resolution: resolution,
@@ -42,23 +46,37 @@ struct PlacementEvaluation: Equatable {
         placementCoordinates: [HexCoordinate],
         occupiedCoordinates: Set<HexCoordinate>
     ) -> Int {
+        reliefContactCoordinates(
+            placementCoordinates: placementCoordinates,
+            occupiedCoordinates: occupiedCoordinates
+        ).count
+    }
+
+    static func reliefContactCoordinates(
+        placementCoordinates: [HexCoordinate],
+        occupiedCoordinates: Set<HexCoordinate>
+    ) -> Set<HexCoordinate> {
         Set(
             placementCoordinates.flatMap { coordinate in
                 axialNeighborCoordinates(for: coordinate)
                     .filter(occupiedCoordinates.contains)
             }
-        ).count
+        )
     }
 
     private static func tier(
         resolution: PlacementResolution,
-        reliefContactCount: Int
+        reliefContactCount: Int,
+        occupiedCellCount: Int
     ) -> MoveQualityTier {
         if resolution.clearedLineCount >= 2 {
             return .expert
         }
         if resolution.clearedLineCount == 1 {
             return .constructive
+        }
+        if occupiedCellCount >= survivalOccupancyThreshold {
+            return .survival
         }
         if reliefContactCount >= reliefContactThreshold {
             return .relief

@@ -8,6 +8,7 @@ enum VexloStrings {
         static let title = localized("hud.title", value: "VEXLO")
         static let mainRun = localized("hud.main_run", value: "Main Run")
         static let boardReading = localized("hud.board_reading", value: "Board reading")
+        static let runOpen = localized("hud.run_open", value: "Run open")
         static let todaysChallenge = localized("hud.todays_challenge", value: "Today's Challenge")
         static let todaysBoard = localized("hud.todays_board", value: "Today's Board")
 
@@ -92,6 +93,10 @@ enum VexloStrings {
         static func continuity(days: Int) -> String {
             String(format: localized("daily.continuity", value: "Continuity · %d"), days)
         }
+
+        static var modestFootholdDetail: String {
+            localized("daily.modest_foothold_detail", value: "Today's foothold — more still in the board")
+        }
     }
 
     enum Overlay {
@@ -106,6 +111,7 @@ enum VexloStrings {
         static let exportDiagnostics = localized("overlay.export_diagnostics", value: "Export Diagnostics")
         static let continueRun = localized("overlay.continue_run", value: "Continue Run")
         static let playAgain = localized("overlay.play_again", value: "Play Again")
+        static let playCleanerRun = localized("overlay.play_cleaner_run", value: "Play a Cleaner Run")
         static let dailyReplayForBest = localized("overlay.daily_replay", value: "Replay for best")
         static let bestToday = localized("overlay.best_today", value: "Best Today")
         static let newBest = localized("overlay.new_best", value: "New Best")
@@ -113,22 +119,90 @@ enum VexloStrings {
         static let challengeFriends = localized("overlay.challenge_friends", value: "Challenge Friends")
         static let playTogether = localized("overlay.play_together", value: "Play Together")
         static let share = localized("overlay.share", value: "Share")
-        static let oneCleanerRun = localized("overlay.one_cleaner_run", value: "One cleaner run was there")
-        static let runRecoveredLate = localized("overlay.run_recovered_late", value: "Late recovery")
+        static let yourBestRunYet = localized("overlay.your_best_run_yet", value: "Your best run yet")
+        static let closeToBest = localized("overlay.close_to_best", value: "Close to best")
+        static let oneCleanerReadGoesFartherStill = localized(
+            "overlay.one_cleaner_read_goes_farther_still",
+            value: "One cleaner read goes farther still"
+        )
+        static let oneCleanerReadGoesFarther = localized(
+            "overlay.one_cleaner_read_goes_farther",
+            value: "One cleaner read goes farther"
+        )
+        static let runRecoveredLate = localized("overlay.run_recovered_late", value: "Recovery came late")
         static let runChainLed = localized("overlay.run_chain_led", value: "Chain-led")
-        static let runSteadyClears = localized("overlay.run_steady_clears", value: "Steady clears")
-        static let runTightBoard = localized("overlay.run_tight_board", value: "Tight board")
-
-        static func runCount(_ value: Int) -> String {
-            String(format: localized("overlay.run_count", value: "Run %d"), value)
-        }
+        static let runSteadyClears = localized("overlay.run_steady_clears", value: "Clear rhythm held")
+        static let runTightBoard = localized("overlay.run_tight_board", value: "No clear found")
+        static let boardClosedEarly = localized("overlay.board_closed_early", value: "Board closed early")
+        static let readUnderPressure = localized("overlay.read_under_pressure", value: "Read under pressure")
+        static let stabilizeOneTurnEarlier = localized("overlay.stabilize_one_turn_earlier", value: "Stabilize one turn earlier")
+        static let rematchReleaseEarlier = localized("overlay.rematch_release_earlier", value: "Release pressure one line earlier")
+        static let keepOneLaneOpenEarlier = localized("overlay.keep_one_lane_open_earlier", value: "Keep one lane open earlier")
+        static let rematchKeepAnchorOpen = localized("overlay.rematch_keep_anchor_open", value: "Keep one anchor open through the turn")
+        static let keepOneAnchorFree = localized("overlay.keep_one_anchor_free", value: "Keep one anchor free")
+        static let rematchOpenLaneEarlier = localized("overlay.rematch_open_lane_earlier", value: "Open one lane earlier next run")
+        static let oneCleanerBoardGoesFarther = localized("overlay.one_cleaner_board_goes_farther", value: "One cleaner board goes farther")
+        static let oneCleanerBoardPressesBest = localized("overlay.one_cleaner_board_presses_best", value: "One cleaner board presses today's best")
+        static let clearRhythmConversionStillThin = localized(
+            "overlay.clear_rhythm_conversion_still_thin",
+            value: "Rhythm held, conversion still thin"
+        )
+        static let clearRhythmLanesClosedIn = localized(
+            "overlay.clear_rhythm_lanes_closed_in",
+            value: "Held together, but lanes closed in"
+        )
+        static let clearRhythmNotExtended = localized(
+            "overlay.clear_rhythm_not_extended",
+            value: "Stable clears, rhythm not extended"
+        )
+        static let chainLedConversionStillThin = localized(
+            "overlay.chain_led_conversion_still_thin",
+            value: "Chain read landed, conversion still thin"
+        )
+        static let chainLedOpennessSlipped = localized(
+            "overlay.chain_led_openness_slipped",
+            value: "Reading held, openness slipped"
+        )
+        static let chainLedPaceDidNotHold = localized(
+            "overlay.chain_led_pace_did_not_hold",
+            value: "Chains opened, pace did not hold"
+        )
+        static let dailyModestBoardStillHasMore = localized(
+            "overlay.daily_modest_board_still_has_more",
+            value: "The board still has more in it today"
+        )
 
         static func streak(_ value: Int) -> String {
             String(format: localized("overlay.streak_format", value: "Streak %d"), value)
         }
 
         static func gapToBest(_ value: Int) -> String {
-            String(format: localized("overlay.gap_to_best", value: "%d to best"), value)
+            String(format: localized("overlay.gap_to_best", value: "Close %d to best"), value)
+        }
+    }
+
+    enum AsyncCompetition {
+        static let todaysTable = localized("async_competition.todays_table", value: "Today's table")
+        static let sendReadingChallenge = localized(
+            "async_competition.send_reading_challenge",
+            value: "Send a reading challenge"
+        )
+        static let shareThisRun = localized("async_competition.share_this_run", value: "Share this run")
+        static let allTimeScores = localized("async_competition.all_time_scores", value: "All-time scores")
+        static let dailyShareSubjectDefault = localized(
+            "async_competition.daily_share_subject",
+            value: "Vexlo — Today's board"
+        )
+        static let dailyShareInviteLine = localized(
+            "async_competition.daily_share_invite",
+            value: "Play today's board in Vexlo."
+        )
+
+        static func dailyShareSubject(headline: String) -> String {
+            String(
+                format: localized("async_competition.daily_share_subject_headline", value: "Vexlo — %@"),
+                headline
+            )
         }
     }
 
@@ -152,6 +226,11 @@ enum VexloStrings {
 
     enum Onboarding {
         static let dragToBoard = localized("onboarding.drag_to_board", value: "Drag a piece to the board")
+        static let firstClearLine = localized("onboarding.first_clear_line", value: "Line clear")
+        static let firstClearRunOpen = localized(
+            "onboarding.first_clear_run_open",
+            value: "Structure cleared. Your run is scoring."
+        )
         static let completeLine = localized("onboarding.complete_line", value: "Chain the next clear to lift score")
         static let chainBuildsScore = localized("onboarding.chain_builds_score", value: "Consecutive clears build a chain")
 
@@ -175,6 +254,29 @@ enum VexloStrings {
         static let leaderboardHint = localized("accessibility.leaderboard_hint", value: "Shows Game Center scores")
         static let dailyActivity = localized("accessibility.daily_activity", value: "Daily Activity")
         static let dailyActivityHint = localized("accessibility.daily_activity_hint", value: "Opens today's Game Center activity")
+        static let todaysTable = localized("accessibility.todays_table", value: "Today's table")
+        static let todaysTableHint = localized(
+            "accessibility.todays_table_hint",
+            value: "Opens today's shared board in Game Center"
+        )
+        static let sendReadingChallenge = localized(
+            "accessibility.send_reading_challenge",
+            value: "Send a reading challenge"
+        )
+        static let sendReadingChallengeHint = localized(
+            "accessibility.send_reading_challenge_hint",
+            value: "Opens the Game Center challenge flow for this run"
+        )
+        static let shareThisRun = localized("accessibility.share_this_run", value: "Share this run")
+        static let shareThisRunHint = localized(
+            "accessibility.share_this_run_hint",
+            value: "Opens the Game Center activity for this run"
+        )
+        static let allTimeScores = localized("accessibility.all_time_scores", value: "All-time scores")
+        static let allTimeScoresHint = localized(
+            "accessibility.all_time_scores_hint",
+            value: "Shows Game Center all-time scores"
+        )
         static let challengeFriends = localized("accessibility.challenge_friends", value: "Challenge Friends")
         static let challengeFriendsHint = localized("accessibility.challenge_friends_hint", value: "Opens the Game Center challenge flow")
         static let playTogether = localized("accessibility.play_together", value: "Play Together")

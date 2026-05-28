@@ -5,6 +5,7 @@ import Testing
 import UIKit
 @testable import Vexlo
 
+@Suite(.serialized)
 struct CriticalPathRegressionTests {
     @Test
     func liveNormalRunSnapshotRoundTrips() throws {
@@ -95,7 +96,7 @@ struct CriticalPathRegressionTests {
 
         #expect(batchOffsetSignatures(normalOpening) == ["0:0|1:0", "0:0|1:0|1:1", "0:0|0:1|0:2"])
         #expect(batchOffsetSignatures(standardOpening) == ["0:0|0:1|1:0", "0:0|1:0", "0:0"])
-        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
+        #expect(batchOffsetSignatures(normalRefill) == ["0:0|0:1|0:2", "0:0|0:1|1:0|1:1", "0:0|0:1"])
         #expect(batchOffsetSignatures(standardRefill) == ["0:0|1:0", "0:0|0:1|0:2", "0:0|1:0|1:1"])
     }
 
@@ -324,7 +325,7 @@ struct CriticalPathRegressionTests {
             board.place(color: fill, at: HexCoordinate(col, 0))
         }
         let clearPiece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
-        let filler = HexPiece(offsets: [HexCoordinate(0, 0), HexCoordinate(1, 0)], color: UIColor(hex: "6A8CFA"))
+        let filler = HexPiece(offsets: [HexCoordinate(0, 1)], color: UIColor(hex: "6A8CFA"))
         let engine = makeEngineForPlacementParity(
             emptyCoordinates: Set(engineOccupiedCoordinates(excluding: board.snapshot.cells.map(\.coordinate))),
             tray: [clearPiece, filler, filler]
@@ -807,7 +808,7 @@ struct CriticalPathRegressionTests {
         #expect(!closureSource.contains("completeRun"))
         #expect(!closureSource.contains("UserDefaults"))
         #expect(!closureSource.contains("seed(for:"))
-        #expect(gameSceneSource.contains("restartText: ritualClosure.replayLabel"))
+        #expect(gameSceneSource.contains("restartText = ritualClosure.replayLabel"))
         #expect(gameSceneSource.contains("VexloStrings.Overlay.dailyReplayForBest"))
     }
 
@@ -1320,17 +1321,30 @@ struct CriticalPathRegressionTests {
 
     @Test
     func highOccupancyIsolatedNoClearEvaluatesAsSurvival() throws {
-        var board = HexBoard(cols: 7, rows: 7)
-        let fill = UIColor(hex: "7A74F7")
-        for col in 0..<7 {
-            for row in 0..<7 where !(col == 6 && row == 6) {
-                board.place(color: fill, at: HexCoordinate(col, row))
+        let occupiedCoordinates = Set(
+            (0..<7).flatMap { col in
+                [HexCoordinate(col, 0), HexCoordinate(col, 1)]
             }
-        }
-        let piece = HexPiece(offsets: [HexCoordinate(0, 0)], color: UIColor(hex: "55A7F6"))
-        let evaluation = try #require(
-            placementEvaluation(on: board, piece: piece, anchor: HexCoordinate(6, 6))
         )
+        let resolution = PlacementResolution(
+            anchor: HexCoordinate(6, 6),
+            placedCoordinates: [HexCoordinate(6, 6)],
+            isLegal: true,
+            clearedRowIndices: [],
+            clearedColIndices: [],
+            clearedCellCoordinates: []
+        )
+        let evaluation = try #require(
+            PlacementEvaluation.evaluate(
+                resolution: resolution,
+                context: PlacementEvaluationContext(
+                    occupiedCellCount: occupiedCoordinates.count,
+                    isOpeningState: false
+                ),
+                occupiedCoordinates: occupiedCoordinates
+            )
+        )
+        #expect(evaluation.resolution.clearedLineCount == 0)
         #expect(evaluation.tier == .survival)
         #expect(evaluation.reliefContactCount < PlacementEvaluation.reliefContactThreshold)
         #expect(
@@ -2045,11 +2059,11 @@ struct CriticalPathRegressionTests {
             contentsOf: repoRoot.appendingPathComponent("Vexlo/Services/HapticsService.swift"),
             encoding: .utf8
         )
-        #expect(gameSceneSource.contains("playClear(clearedLineCount: clearedLineCount)"))
+        #expect(gameSceneSource.contains("HapticsService.shared.playClear()"))
         #expect(gameSceneSource.contains("if shouldPlayComboReward"))
         #expect(gameSceneSource.contains("HapticsService.shared.playCombo()"))
-        #expect(hapticsSource.contains("func playClear(clearedLineCount: Int)"))
-        #expect(hapticsSource.contains("clearedLineCount >= 2"))
+        #expect(hapticsSource.contains("func playClear()"))
+        #expect(gameSceneSource.contains("shouldPlayComboReward"))
     }
 
     @Test

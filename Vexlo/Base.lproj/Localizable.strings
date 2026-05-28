@@ -58,7 +58,7 @@
 "overlay.one_cleaner_run" = "One cleaner run was there";
 "overlay.run_count" = "Run %d";
 "overlay.streak_format" = "Streak %d";
-"overlay.gap_to_best" = "%d to best";
+"overlay.gap_to_best" = "Close %d to best";
 
 "utility.sound_on" = "Sound On";
 "utility.sound_off" = "Sound Off";

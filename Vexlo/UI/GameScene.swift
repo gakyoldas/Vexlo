@@ -1987,6 +1987,10 @@ final class GameScene: SKScene {
             lastDailyCompletion = DailyChallengeService.shared.completeRun(dayID: dayID, score: engine.scoreEngine.score)
             if let completion = lastDailyCompletion {
                 AnalyticsService.shared.recordDailyChallengeCompleted(streak: completion.streakCount)
+                GameCenterService.shared.reportDailyTableScore(
+                    dayID: dayID,
+                    todayBest: completion.todayBest
+                )
             }
         } else {
             let completedRuns = GameCenterService.shared.nextCompletedRunCount()

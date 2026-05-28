@@ -28,7 +28,11 @@ struct PlacementEvaluation: Equatable {
             placementCoordinates: resolution.placedCoordinates,
             occupiedCoordinates: occupiedCoordinates
         )
-        let tier = tier(resolution: resolution, reliefContactCount: reliefContactCount)
+        let tier = tier(
+            resolution: resolution,
+            reliefContactCount: reliefContactCount,
+            occupiedCellCount: context.occupiedCellCount
+        )
 
         return PlacementEvaluation(
             resolution: resolution,
@@ -62,13 +66,17 @@ struct PlacementEvaluation: Equatable {
 
     private static func tier(
         resolution: PlacementResolution,
-        reliefContactCount: Int
+        reliefContactCount: Int,
+        occupiedCellCount: Int
     ) -> MoveQualityTier {
         if resolution.clearedLineCount >= 2 {
             return .expert
         }
         if resolution.clearedLineCount == 1 {
             return .constructive
+        }
+        if occupiedCellCount >= survivalOccupancyThreshold {
+            return .survival
         }
         if reliefContactCount >= reliefContactThreshold {
             return .relief

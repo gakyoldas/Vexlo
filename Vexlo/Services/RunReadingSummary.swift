@@ -54,6 +54,7 @@ struct RunReadingSummary: Equatable {
     private static let clearRhythmHighMidUpper = 700
     private static let chainLedMidBandUpper = 700
     private static let pressureCollapseMinimumScore = 150
+    private static let pressureCollapseMaximumScore = 450
     private static let pressureCollapseMinimumCombo = 2
     private static let pressureCollapseMinimumOccupancy = BoardPressure.tautOccupancyLowerBound + 1
 
@@ -75,14 +76,6 @@ struct RunReadingSummary: Equatable {
             )
         }
 
-        if isNearBestMiss(context, isNewBest: isNewBest) {
-            return Mapping(
-                primary: VexloStrings.Overlay.closeToBest,
-                secondary: VexloStrings.Overlay.oneCleanerReadGoesFarther,
-                replayLabel: VexloStrings.Overlay.playCleanerRun
-            )
-        }
-
         if context.hasUsedContinue {
             return Mapping(
                 primary: VexloStrings.Overlay.runRecoveredLate,
@@ -95,6 +88,27 @@ struct RunReadingSummary: Equatable {
             return Mapping(
                 primary: VexloStrings.Overlay.readUnderPressure,
                 secondary: VexloStrings.Overlay.rematchReleaseEarlier,
+                replayLabel: VexloStrings.Overlay.playCleanerRun
+            )
+        }
+
+        if isNearBestMiss(context, isNewBest: isNewBest) {
+            let secondary = quietNearMissMasteryLine(
+                score: context.score,
+                best: context.best,
+                maxCombo: context.maxCombo,
+                didClearAny: context.didClearAny,
+                hasUsedContinue: context.hasUsedContinue
+            ) ?? credibleGapToBestLine(
+                score: context.score,
+                best: context.best,
+                didClearAny: context.didClearAny,
+                hasUsedContinue: context.hasUsedContinue,
+                isNewBest: isNewBest
+            ) ?? VexloStrings.Overlay.oneCleanerReadGoesFarther
+            return Mapping(
+                primary: VexloStrings.Overlay.closeToBest,
+                secondary: secondary,
                 replayLabel: VexloStrings.Overlay.playCleanerRun
             )
         }
@@ -185,10 +199,13 @@ struct RunReadingSummary: Equatable {
     }
 
     private static func shouldClassifyAsBoardClosedEarly(_ context: RunReadingContext) -> Bool {
-        if context.score < lowScoreBoardClosureThreshold {
+        if context.score < lowScoreBoardClosureThreshold,
+           context.terminalPressureBand == .taut,
+           context.occupiedCellCount >= boardClosureSoftBandMinimumOccupancy {
             return true
         }
-        guard context.score <= boardClosureSoftBandUpper else {
+        guard context.score >= lowScoreBoardClosureThreshold,
+              context.score <= boardClosureSoftBandUpper else {
             return false
         }
         // Boundary smoothing around 150: preserve weak-shape truth
@@ -221,10 +238,10 @@ struct RunReadingSummary: Equatable {
     private static func isPressureCollapse(_ context: RunReadingContext) -> Bool {
         guard context.didClearAny,
               context.score >= pressureCollapseMinimumScore,
+              context.score <= pressureCollapseMaximumScore,
               context.maxCombo >= pressureCollapseMinimumCombo,
               context.terminalPressureBand == .taut,
-              context.occupiedCellCount >= pressureCollapseMinimumOccupancy,
-              context.score >= lowScoreBoardClosureThreshold else {
+              context.occupiedCellCount >= pressureCollapseMinimumOccupancy else {
             return false
         }
         return true

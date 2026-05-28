@@ -30,7 +30,18 @@ struct ResultSharePayload {
 
 enum ResultShareService {
     static func activityItems(for payload: ResultSharePayload) -> [Any] {
-        [ResultShareItemSource(payload: payload, title: summaryText(for: payload))]
+        if let dailyContent = AsyncCompetitionSharePresentation.dailyShareContent(for: payload) {
+            return [
+                ResultShareItemSource(
+                    payload: payload,
+                    title: dailyContent.subject,
+                    linkURL: dailyContent.inviteURL
+                ),
+                dailyContent.inviteLine,
+                dailyContent.inviteURL
+            ]
+        }
+        return [ResultShareItemSource(payload: payload, title: summaryText(for: payload))]
     }
 
     private static func summaryText(for payload: ResultSharePayload) -> String {
@@ -188,6 +199,7 @@ enum ResultShareService {
 private final class ResultShareItemSource: NSObject, UIActivityItemSource {
     private let payload: ResultSharePayload
     private let title: String
+    private let linkURL: URL?
     private lazy var placeholderImage: UIImage = {
         let size = CGSize(width: 1200, height: 1600)
         let format = UIGraphicsImageRendererFormat()
@@ -203,9 +215,10 @@ private final class ResultShareItemSource: NSObject, UIActivityItemSource {
         ResultShareService.makeCardImage(for: payload) ?? placeholderImage
     }()
 
-    init(payload: ResultSharePayload, title: String) {
+    init(payload: ResultSharePayload, title: String, linkURL: URL? = nil) {
         self.payload = payload
         self.title = title
+        self.linkURL = linkURL
     }
 
     func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
@@ -230,6 +243,10 @@ private final class ResultShareItemSource: NSObject, UIActivityItemSource {
         let metadata = LPLinkMetadata()
         metadata.title = title
         metadata.imageProvider = NSItemProvider(object: renderedImage)
+        if let linkURL {
+            metadata.url = linkURL
+            metadata.originalURL = linkURL
+        }
         return metadata
     }
 }

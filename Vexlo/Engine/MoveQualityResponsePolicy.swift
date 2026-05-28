@@ -8,7 +8,7 @@ enum MoveQualityResponseMoment: Equatable {
     case runEnd
 }
 
-/// Inputs for move-quality response policy. Not `BoardPressure` tray-generation pressure.
+/// Inputs for move-quality response policy. Distinct from tray-generation pressure semantics.
 struct MoveQualityResponseContext: Equatable {
     let moment: MoveQualityResponseMoment
     let tier: MoveQualityTier?

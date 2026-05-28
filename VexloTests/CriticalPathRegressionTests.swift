@@ -4697,6 +4697,78 @@ struct EntitlementCatalogRegressionTests {
 }
 
 @Suite(.serialized)
+struct AtelierCatalogPersistenceRegressionTests {
+    private func isolatedPersistence() -> AtelierPersistenceService {
+        let suiteName = "nf.vexlo.atelier.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return AtelierPersistenceService(defaults: defaults)
+    }
+
+    @Test
+    func defaultCosmeticsAreOwnedWithoutPersistence() {
+        let persistence = isolatedPersistence()
+        let inventory = persistence.inventorySnapshot()
+        #expect(inventory.ownedIDs == AtelierCatalog.defaultFreeOwnedIDs)
+        #expect(inventory.ownedIDs.contains(AtelierCosmeticID.boardFrameDefault.rawValue))
+        #expect(!inventory.ownedIDs.contains(AtelierCosmeticID.boardFrameArchive.rawValue))
+    }
+
+    @Test
+    func lockedCosmeticIsNotOwnedByDefault() {
+        let persistence = isolatedPersistence()
+        #expect(AtelierCatalog.cosmetic(id: .boardFrameArchive)?.isFreeByDefault == false)
+        #expect(!persistence.inventorySnapshot().ownedIDs.contains(AtelierCosmeticID.boardFrameArchive.rawValue))
+    }
+
+    @Test
+    func grantingCosmeticPersists() {
+        let persistence = isolatedPersistence()
+        persistence.grant(cosmeticID: .boardFrameArchive)
+        #expect(persistence.loadGrantedOwnedIDs().contains(AtelierCosmeticID.boardFrameArchive.rawValue))
+        #expect(persistence.inventorySnapshot().ownedIDs.contains(AtelierCosmeticID.boardFrameArchive.rawValue))
+    }
+
+    @Test
+    func selectingOwnedCosmeticPersists() {
+        let persistence = isolatedPersistence()
+        persistence.grant(cosmeticID: .boardFrameArchive)
+        persistence.saveSelected(cosmeticID: .boardFrameArchive, for: .boardFrameFinish)
+        #expect(persistence.loadPersistedSelection(for: .boardFrameFinish) == .boardFrameArchive)
+        #expect(persistence.resolvedSelection(for: .boardFrameFinish) == .boardFrameArchive)
+    }
+
+    @Test
+    func selectingUnownedCosmeticFallsBackToDefault() {
+        let persistence = isolatedPersistence()
+        persistence.saveSelected(cosmeticID: .boardFrameArchive, for: .boardFrameFinish)
+        #expect(persistence.resolvedSelection(for: .boardFrameFinish) == .boardFrameDefault)
+        let snapshot = persistence.selectionSnapshot()
+        #expect(snapshot.selections[.boardFrameFinish] == .boardFrameDefault)
+    }
+
+    @Test
+    func categoryDefaultResolutionUsesCatalogDefault() {
+        for category in AtelierCosmeticCategory.allCases {
+            let expected = AtelierCatalog.defaultCosmeticID(for: category)
+            let persistence = isolatedPersistence()
+            #expect(persistence.resolvedSelection(for: category) == expected)
+        }
+    }
+
+    @Test
+    func entitlementSnapshotOwnsCosmeticUsesAtelierRawValues() {
+        let granted: Set<String> = [AtelierCosmeticID.boardFrameArchive.rawValue]
+        let snapshot = EntitlementCatalog.liveSnapshot(
+            supporterOwned: false,
+            grantedAtelierCosmeticIDs: granted
+        )
+        #expect(snapshot.ownsCosmetic(id: AtelierCosmeticID.boardFrameArchive.rawValue))
+        #expect(!snapshot.ownsCosmetic(id: AtelierCosmeticID.boardFrameDefault.rawValue))
+    }
+}
+
+@Suite(.serialized)
 struct RewardedAdsConfigurationRegressionTests {
     @Test
     func releaseConfigWithoutPlistValuesIsUnavailable() {

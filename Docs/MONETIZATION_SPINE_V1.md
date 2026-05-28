@@ -91,6 +91,24 @@ Capability matrix (rewarded commerce path):
 
 Diagnostics: `RewardedAdsService.configurationDiagnostic` and `RewardedAdsConfiguration.diagnostic` expose blockers without user-facing copy.
 
+## Atelier catalog v1 (Phase 4 — persistence only)
+
+Purpose: stable cosmetic IDs, default ownership, and UserDefaults persistence for future ownership and calm aesthetic expression. No UI, StoreKit, visual application, or gameplay effect in this phase.
+
+Non-pay-to-win: cosmetics are presentation-only. They must never grant score, combo, board power, continue/reroll capacity, mastery, codex, reader profile, or difficulty advantage.
+
+Current scope:
+
+- `AtelierCatalog` — seed catalog and category defaults
+- `AtelierPersistenceService` — granted ownership + per-category selection
+- Categories reuse `AtelierCosmeticCategory` from ethical monetization policy (`boardFrameFinish`, `pieceMineralPalette`, `hudAccentTone`, `shareCardFinish`, `trayRestMarkFinish`)
+- Default/free cosmetics are effectively owned without persistence; locked seed items stay unowned until granted
+- Invalid or unowned selections resolve to the category default
+
+Deferred: atelier/gallery UI, cosmetic StoreKit products, visual application to board/HUD/share/tray, entitlement wiring from live persistence into `MonetizationService` (compose via `EntitlementCatalog.liveSnapshot(grantedAtelierCosmeticIDs:)` when product approves).
+
+Forbidden grants (unchanged): score/combo power, extra continue, mastery/codex/reader unlocks, streak insurance, scarcity timers, gameplay hints.
+
 ## Engineering boundaries
 
 - `EntitlementCatalog` + `EntitlementSnapshot`: read model only; no StoreKit here.

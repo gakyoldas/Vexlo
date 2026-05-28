@@ -67,13 +67,17 @@ struct EntitlementSnapshot: Equatable {
 
 /// Composes entitlement snapshots from live ownership sources without replacing product services.
 enum EntitlementCatalog {
-    static func liveSnapshot(supporterOwned: Bool) -> EntitlementSnapshot {
+    /// `grantedAtelierCosmeticIDs` — persisted or commerce-granted IDs (`AtelierCosmeticID.rawValue`); not catalog defaults.
+    static func liveSnapshot(
+        supporterOwned: Bool,
+        grantedAtelierCosmeticIDs: Set<String> = []
+    ) -> EntitlementSnapshot {
         EntitlementSnapshot(
             supporterOwned: supporterOwned,
             noAdsOwned: false,
             allAccessOwned: false,
             founderOwned: false,
-            ownedCosmeticIDs: []
+            ownedCosmeticIDs: grantedAtelierCosmeticIDs
         )
     }
 }

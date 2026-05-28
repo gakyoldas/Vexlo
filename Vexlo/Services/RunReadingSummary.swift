@@ -38,6 +38,33 @@ struct RunReadingSummary: Equatable {
         return mappingForContext(context, isNewBest: isNewBest).primary
     }
 
+    /// Stable residue / archive key aligned with `mappingForContext` priority.
+    static func readingDetailKey(for context: RunReadingContext) -> String {
+        let isNewBest = context.score >= context.best && context.score > context.runStartBest
+        if isNewBest {
+            return "your_best_run_yet"
+        }
+        if context.hasUsedContinue {
+            return "run_recovered_late"
+        }
+        if isPressureCollapse(context) {
+            return "read_under_pressure"
+        }
+        if isNearBestMiss(context, isNewBest: isNewBest) {
+            return "close_to_best"
+        }
+        if context.didClearAny, context.maxCombo >= 2 {
+            return "chain_led_reading"
+        }
+        if context.didClearAny {
+            if shouldClassifyAsBoardClosedEarly(context) {
+                return "board_closed_early"
+            }
+            return "clear_rhythm_held"
+        }
+        return "no_clear_found"
+    }
+
     static func progressLine(for context: RunReadingContext, isNewBest: Bool) -> String {
         mappingForContext(context, isNewBest: isNewBest).secondary
     }

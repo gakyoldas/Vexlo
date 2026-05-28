@@ -9,6 +9,36 @@ struct DailyRitualClosure: Equatable {
     let progress: String
     let replayLabel: String
 
+    /// Stable residue / archive key aligned with `closure` tier logic.
+    static func readingDetailKey(
+        identity _: DailyRitualIdentity,
+        completion: DailyChallengeCompletion?,
+        didClearAny: Bool
+    ) -> String {
+        let score = max(0, completion?.score ?? 0)
+        let isNewBestToday = completion?.isNewBestToday == true && score > 0
+        let strongCompletionThreshold = 320
+        let modestCompletionThreshold = 220
+        let modestCompletionSoftThreshold = 240
+        let isZeroOrNoClear = score == 0 || !didClearAny
+        let isStrongCompletion = !isZeroOrNoClear && score >= strongCompletionThreshold
+        let isModestCompletion = !isZeroOrNoClear
+            && (score >= modestCompletionSoftThreshold
+                || (score >= modestCompletionThreshold && isNewBestToday))
+        let isCompletionQuality = isStrongCompletion || isModestCompletion
+        let isWeakRecorded = !isCompletionQuality && !isZeroOrNoClear
+        if isZeroOrNoClear {
+            return "daily_no_clear"
+        }
+        if isWeakRecorded {
+            return "daily_weak_recorded"
+        }
+        if isCompletionQuality {
+            return isStrongCompletion ? "daily_strong_completion" : "daily_modest_completion"
+        }
+        return "daily_recorded"
+    }
+
     static func closure(
         identity: DailyRitualIdentity,
         completion: DailyChallengeCompletion?,

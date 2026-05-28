@@ -3561,9 +3561,1135 @@ private func clear(_ suiteName: String) {
     UserDefaults.standard.removePersistentDomain(forName: suiteName)
 }
 
+@Suite(.serialized)
+struct RunResidueRegressionTests {
+    @Test
+    func normalTerminalFinalizePersistsResidueWithExpectedFields() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+            RunResiduePersistenceService.shared.clear()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(false, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+
+        let residue = try #require(RunResiduePersistenceService.shared.loadLast())
+        #expect(residue.mode == .normal)
+        #expect(residue.score == 240)
+        #expect(residue.didClearAny)
+        #expect(residue.maxCombo == 2)
+        #expect(residue.dailyDayID == nil)
+        #expect(residue.dailyStreakCount == nil)
+        #expect(residue.schemaVersion == RunResidueRecord.currentSchemaVersion)
+        #expect(residue.readingDetailKey == "your_best_run_yet")
+        #expect(residue.lessonFlag == .anchorDiscipline)
+        #expect(residue.terminalPressureBand == "calm" || residue.terminalPressureBand == "attentive" || residue.terminalPressureBand == "taut")
+    }
+
+    @Test
+    func dailyTerminalFinalizePersistsResidueWithDailyFields() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        defer {
+            clearSharedResumeState()
+            RunResiduePersistenceService.shared.clear()
+        }
+
+        let dayID = uniqueDayID()
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+        scene.testingLoadTerminalState(
+            mode: .daily(dayID: dayID, seed: seed),
+            emptyCoordinates: Set([HexCoordinate(1, 0), HexCoordinate(4, 2), HexCoordinate(6, 5)]),
+            tray: terminalTrayPieces(),
+            score: 70,
+            best: 40,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 40
+        )
+        scene.testingSyncAll()
+
+        let residue = try #require(RunResiduePersistenceService.shared.loadLast())
+        #expect(residue.mode == .daily)
+        #expect(residue.score == 70)
+        #expect(residue.dailyDayID == dayID)
+        #expect(residue.dailyStreakCount != nil)
+        #expect(residue.readingDetailKey == "daily_modest_completion" || residue.readingDetailKey == "daily_weak_recorded")
+    }
+
+    @Test
+    func lessonFlagMappingIsDeterministic() {
+        #expect(
+            RunResidueRecord.lessonFlag(
+                readingDetailKey: "read_under_pressure",
+                didClearAny: true,
+                hasUsedContinue: false
+            ) == .pressureRelease
+        )
+        #expect(
+            RunResidueRecord.lessonFlag(
+                readingDetailKey: "no_clear_found",
+                didClearAny: false,
+                hasUsedContinue: false
+            ) == .noClear
+        )
+        #expect(
+            RunResidueRecord.lessonFlag(
+                readingDetailKey: "clear_rhythm_held",
+                didClearAny: true,
+                hasUsedContinue: false
+            ) == .anchorDiscipline
+        )
+    }
+
+    @Test
+    func duplicateFinalizeDoesNotDuplicateResidueWrite() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer { MonetizationService.shared.testingClearCanPresentOverrides() }
+
+        MonetizationService.shared.testingSetCanPresentOverride(false, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 180,
+            best: 200,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 120
+        )
+        scene.testingSyncAll()
+        let firstCount = RunResiduePersistenceService.shared.saveInvocationCount
+        scene.testingSyncAll()
+        let secondCount = RunResiduePersistenceService.shared.saveInvocationCount
+        #expect(firstCount >= 1)
+        #expect(secondCount == firstCount)
+    }
+
+    @Test
+    func readingDetailKeyMatchesRunReadingSummaryPriority() {
+        let chainLed = RunReadingContext(
+            score: 240,
+            best: 300,
+            runStartBest: 180,
+            maxCombo: 2,
+            didClearAny: true,
+            hasUsedContinue: false,
+            terminalPressureBand: .calm,
+            occupiedCellCount: 8,
+            completedRuns: 4
+        )
+        #expect(RunReadingSummary.readingDetailKey(for: chainLed) == "chain_led_reading")
+
+        let noClear = RunReadingContext(
+            score: 40,
+            best: 200,
+            runStartBest: 120,
+            maxCombo: 0,
+            didClearAny: false,
+            hasUsedContinue: false,
+            terminalPressureBand: .taut,
+            occupiedCellCount: 20,
+            completedRuns: 4
+        )
+        #expect(RunReadingSummary.readingDetailKey(for: noClear) == "no_clear_found")
+    }
+
+    @Test
+    func persistenceRoundtripPreservesRecord() throws {
+        let defaults = UserDefaults(suiteName: "RunResidueRegressionTests.roundtrip.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = RunResiduePersistenceService(defaults: defaults, isCaptureModeProvider: { false })
+        let record = RunResidueRecord.makeNormal(
+            context: RunReadingContext(
+                score: 310,
+                best: 320,
+                runStartBest: 280,
+                maxCombo: 2,
+                didClearAny: true,
+                hasUsedContinue: false,
+                terminalPressureBand: .attentive,
+                occupiedCellCount: 11,
+                completedRuns: 2
+            ),
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        persistence.save(record)
+        let loaded = try #require(persistence.loadLast())
+        #expect(loaded == record)
+    }
+
+    @Test
+    func captureModeSkipsResiduePersistence() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        defer {
+            clearSharedResumeState()
+            RunResiduePersistenceService.shared.clear()
+        }
+
+        let defaults = UserDefaults(suiteName: "RunResidueRegressionTests.capture.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+        let persistence = RunResiduePersistenceService(defaults: defaults, isCaptureModeProvider: { true })
+        let record = RunResidueRecord.makeNormal(
+            context: RunReadingContext(
+                score: 100,
+                best: 100,
+                runStartBest: 80,
+                maxCombo: 1,
+                didClearAny: true,
+                hasUsedContinue: false,
+                terminalPressureBand: .calm,
+                occupiedCellCount: 6,
+                completedRuns: 1
+            )
+        )
+        persistence.save(record)
+        #expect(persistence.loadLast() == nil)
+        #expect(persistence.saveInvocationCount == 0)
+    }
+
+    @Test
+    func continueEligibleTerminalDoesNotPersistResidueBeforeFinalize() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+            RunResiduePersistenceService.shared.clear()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+        #expect(RunResiduePersistenceService.shared.loadLast() == nil)
+    }
+}
+
+@Suite(.serialized)
+struct MasteryRecognitionRegressionTests {
+    @Test
+    func chainReaderRecognizedFromRepeatedChainResidues() {
+        let history = masteryTestHistory(
+            leadingNeutralCount: 1,
+            pattern: (.chainConversion, "chain_led_reading", 2, "calm"),
+            patternCount: 3
+        )
+        let recognized = MasteryRecognitionEvaluator.recognizedCompetencies(
+            history: history,
+            alreadyRecognized: []
+        )
+        #expect(recognized.contains(.chainReader))
+    }
+
+    @Test
+    func insufficientHistoryDoesNotUnlockCompetencies() {
+        let history = masteryTestHistory(
+            leadingNeutralCount: 0,
+            pattern: (.chainConversion, "chain_led_reading", 2, "calm"),
+            patternCount: 3
+        )
+        #expect(history.count == 3)
+        let recognized = MasteryRecognitionEvaluator.recognizedCompetencies(
+            history: history,
+            alreadyRecognized: []
+        )
+        #expect(recognized.isEmpty)
+    }
+
+    @Test
+    func multipleCompetenciesCanCoexistWhenJustified() {
+        var history: [RunResidueRecord] = []
+        history.append(contentsOf: masteryTestResidues(
+            count: 3,
+            lessonFlag: .chainConversion,
+            readingDetailKey: "chain_led_reading",
+            maxCombo: 2,
+            pressureBand: "calm"
+        ))
+        history.append(contentsOf: masteryTestResidues(
+            count: 3,
+            lessonFlag: .pressureRelease,
+            readingDetailKey: "read_under_pressure",
+            maxCombo: 2,
+            pressureBand: "taut"
+        ))
+        history.append(contentsOf: masteryTestResidues(
+            count: 4,
+            lessonFlag: .anchorDiscipline,
+            readingDetailKey: "clear_rhythm_held",
+            maxCombo: 1,
+            pressureBand: "calm"
+        ))
+        let recognized = MasteryRecognitionEvaluator.recognizedCompetencies(
+            history: history,
+            alreadyRecognized: []
+        )
+        #expect(recognized.contains(.chainReader))
+        #expect(recognized.contains(.pressureReader))
+        #expect(recognized.contains(.anchorReader))
+    }
+
+    @Test
+    func masteryPersistenceRoundtrip() {
+        let defaults = UserDefaults(suiteName: "MasteryRecognitionRegressionTests.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = MasteryRecognitionPersistenceService(
+            defaults: defaults,
+            isCaptureModeProvider: { false }
+        )
+        let state = MasteryRecognitionState(
+            schemaVersion: MasteryRecognitionState.currentSchemaVersion,
+            recognized: [.anchorReader, .chainReader]
+        )
+        persistence.save(state)
+        let loaded = persistence.load()
+        #expect(loaded == state)
+        #expect(loaded?.utilityLine() == "Reading pattern: Anchor reader · Chain reader")
+    }
+
+    @Test
+    func utilityMasteryLineIsNilWhenNothingRecognized() {
+        let defaults = UserDefaults(suiteName: "MasteryRecognitionRegressionTests.utility.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let masteryPersistence = MasteryRecognitionPersistenceService(
+            defaults: defaults,
+            isCaptureModeProvider: { false }
+        )
+        let residuePersistence = RunResiduePersistenceService(
+            defaults: defaults,
+            isCaptureModeProvider: { false }
+        )
+        let service = MasteryRecognitionService(
+            residuePersistence: residuePersistence,
+            masteryPersistence: masteryPersistence,
+            isCaptureModeProvider: { false }
+        )
+        #expect(service.utilityMasteryLine() == nil)
+    }
+
+    @Test
+    func refreshAfterResidueSaveDoesNotChangeResidueSaveSemantics() throws {
+        clearSharedResumeState()
+        RunResiduePersistenceService.shared.clear()
+        MasteryRecognitionPersistenceService.shared.clear()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(false, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 180,
+            best: 200,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 120
+        )
+        let savesBefore = RunResiduePersistenceService.shared.saveInvocationCount
+        scene.testingSyncAll()
+        #expect(RunResiduePersistenceService.shared.saveInvocationCount == savesBefore + 1)
+        #expect(RunResiduePersistenceService.shared.loadLast() != nil)
+        #expect(RunResiduePersistenceService.shared.loadHistory().count == 1)
+    }
+
+    @Test
+    func residueHistoryRoundtripPreservesOrder() {
+        let defaults = UserDefaults(suiteName: "MasteryRecognitionRegressionTests.history.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = RunResiduePersistenceService(defaults: defaults, isCaptureModeProvider: { false })
+        let first = masteryTestResidue(
+            lessonFlag: .chainConversion,
+            readingDetailKey: "chain_led_reading",
+            timestamp: Date(timeIntervalSince1970: 100)
+        )
+        let second = masteryTestResidue(
+            lessonFlag: .pressureRelease,
+            readingDetailKey: "read_under_pressure",
+            timestamp: Date(timeIntervalSince1970: 200)
+        )
+        persistence.save(first)
+        persistence.save(second)
+        let history = persistence.loadHistory()
+        #expect(history.count == 2)
+        #expect(history[0] == second)
+        #expect(history[1] == first)
+    }
+}
+
+private func masteryTestHistory(
+    leadingNeutralCount: Int,
+    pattern: (RunResidueRecord.LessonFlag, String, Int, String),
+    patternCount: Int
+) -> [RunResidueRecord] {
+    var history: [RunResidueRecord] = masteryTestResidues(
+        count: leadingNeutralCount,
+        lessonFlag: .noClear,
+        readingDetailKey: "no_clear_found",
+        maxCombo: 0,
+        pressureBand: "taut"
+    )
+    history.append(contentsOf: masteryTestResidues(
+        count: patternCount,
+        lessonFlag: pattern.0,
+        readingDetailKey: pattern.1,
+        maxCombo: pattern.2,
+        pressureBand: pattern.3
+    ))
+    return history
+}
+
+private func masteryTestResidues(
+    count: Int,
+    lessonFlag: RunResidueRecord.LessonFlag,
+    readingDetailKey: String,
+    maxCombo: Int,
+    pressureBand: String
+) -> [RunResidueRecord] {
+    (0..<count).map { index in
+        masteryTestResidue(
+            lessonFlag: lessonFlag,
+            readingDetailKey: readingDetailKey,
+            maxCombo: maxCombo,
+            pressureBand: pressureBand,
+            timestamp: Date(timeIntervalSince1970: Double(1_000 + index))
+        )
+    }
+}
+
+private func masteryTestResidue(
+    lessonFlag: RunResidueRecord.LessonFlag,
+    readingDetailKey: String,
+    maxCombo: Int = 2,
+    pressureBand: String = "calm",
+    didClearAny: Bool = true,
+    timestamp: Date = Date(timeIntervalSince1970: 1_700_000_000)
+) -> RunResidueRecord {
+    RunResidueRecord(
+        schemaVersion: RunResidueRecord.currentSchemaVersion,
+        timestamp: timestamp,
+        mode: .normal,
+        score: 240,
+        didClearAny: didClearAny,
+        maxCombo: maxCombo,
+        terminalPressureBand: pressureBand,
+        readingDetailKey: readingDetailKey,
+        lessonFlag: lessonFlag,
+        dailyDayID: nil,
+        dailyStreakCount: nil
+    )
+}
+
+@Suite(.serialized)
+struct DailyCodexRegressionTests {
+    @Test
+    func dailyTerminalFinalizeWritesCodexEntry() throws {
+        clearSharedResumeState()
+        DailyCodexPersistenceService.shared.clear()
+        defer {
+            clearSharedResumeState()
+            DailyCodexPersistenceService.shared.clear()
+        }
+
+        let dayID = uniqueDayID()
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+        scene.testingLoadTerminalState(
+            mode: .daily(dayID: dayID, seed: seed),
+            emptyCoordinates: Set([HexCoordinate(1, 0), HexCoordinate(4, 2), HexCoordinate(6, 5)]),
+            tray: terminalTrayPieces(),
+            score: 70,
+            best: 40,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 40
+        )
+        scene.testingSyncAll()
+
+        let entry = try #require(DailyCodexPersistenceService.shared.loadEntry(dayID: dayID))
+        #expect(entry.dayID == dayID)
+        #expect(entry.score == 70)
+        #expect(entry.lastAttemptScore == 70)
+        #expect(entry.completionTier == .weakRecorded || entry.completionTier == .modest)
+        #expect(entry.schemaVersion == DailyCodexEntry.currentSchemaVersion)
+        #expect(RunResiduePersistenceService.shared.saveInvocationCount >= 1)
+    }
+
+    @Test
+    func sameDayReplayUpdatesEntryWithoutDuplication() {
+        let defaults = UserDefaults(suiteName: "DailyCodexRegressionTests.upsert.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = DailyCodexPersistenceService(
+            defaults: defaults,
+            isCaptureModeProvider: { false }
+        )
+        let dayID = "2025-05-10"
+        let completionWeak = DailyChallengeCompletion(
+            dayID: dayID,
+            score: 70,
+            isNewBestToday: true,
+            todayBest: 70,
+            streakCount: 2
+        )
+        let weakEntry = DailyCodexEntry.make(
+            dayID: dayID,
+            completion: completionWeak,
+            didClearAny: true,
+            residue: nil,
+            recognizedMastery: [],
+            timestamp: Date(timeIntervalSince1970: 100)
+        )
+        persistence.upsert(weakEntry)
+
+        let completionStrong = DailyChallengeCompletion(
+            dayID: dayID,
+            score: 350,
+            isNewBestToday: true,
+            todayBest: 350,
+            streakCount: 2
+        )
+        let strongEntry = DailyCodexEntry.make(
+            dayID: dayID,
+            completion: completionStrong,
+            didClearAny: true,
+            residue: nil,
+            recognizedMastery: [.chainReader],
+            timestamp: Date(timeIntervalSince1970: 200)
+        )
+        persistence.upsert(strongEntry)
+
+        let recent = persistence.loadRecent(limit: 10)
+        #expect(recent.count == 1)
+        #expect(recent[0].score == 350)
+        #expect(recent[0].completionTier == .strong)
+        #expect(recent[0].isBestToday)
+        #expect(recent[0].recognizedMastery == ["chain_reader"])
+        #expect(persistence.upsertInvocationCount == 2)
+    }
+
+    @Test
+    func zeroDailyPreservesTruthfulCodexTier() {
+        let entry = DailyCodexEntry.make(
+            dayID: "2025-05-11",
+            completion: DailyChallengeCompletion(
+                dayID: "2025-05-11",
+                score: 0,
+                isNewBestToday: false,
+                todayBest: 0,
+                streakCount: 1
+            ),
+            didClearAny: false,
+            residue: nil,
+            recognizedMastery: []
+        )
+        #expect(entry.completionTier == .zeroOrNoClear)
+        #expect(entry.readingDetailKey == "daily_no_clear")
+    }
+
+    @Test
+    func persistenceRoundtripPreservesCodexEntries() {
+        let defaults = UserDefaults(suiteName: "DailyCodexRegressionTests.roundtrip.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = DailyCodexPersistenceService(
+            defaults: defaults,
+            isCaptureModeProvider: { false }
+        )
+        let older = DailyCodexEntry.make(
+            dayID: "2025-05-08",
+            completion: DailyChallengeCompletion(
+                dayID: "2025-05-08",
+                score: 180,
+                isNewBestToday: true,
+                todayBest: 180,
+                streakCount: 1
+            ),
+            didClearAny: true,
+            residue: nil,
+            recognizedMastery: []
+        )
+        let newer = DailyCodexEntry.make(
+            dayID: "2025-05-09",
+            completion: DailyChallengeCompletion(
+                dayID: "2025-05-09",
+                score: 340,
+                isNewBestToday: true,
+                todayBest: 340,
+                streakCount: 2
+            ),
+            didClearAny: true,
+            residue: nil,
+            recognizedMastery: [.anchorReader]
+        )
+        persistence.upsert(older)
+        persistence.upsert(newer)
+
+        let recent = persistence.loadRecent(limit: 2)
+        #expect(recent.map(\.dayID) == ["2025-05-09", "2025-05-08"])
+        #expect(persistence.loadEntry(dayID: "2025-05-09") == newer)
+    }
+
+    @Test
+    func utilityRitualBlockIsNilWhenCodexEmpty() {
+        let defaults = UserDefaults(suiteName: "DailyCodexRegressionTests.utility.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let service = DailyCodexService(
+            persistence: DailyCodexPersistenceService(defaults: defaults, isCaptureModeProvider: { false }),
+            masteryPersistence: MasteryRecognitionPersistenceService(
+                defaults: defaults,
+                isCaptureModeProvider: { false }
+            ),
+            isCaptureModeProvider: { false }
+        )
+        #expect(service.utilityRitualBlock() == nil)
+    }
+
+    @Test
+    func dailyFinalizeDoesNotChangeResidueSaveCountSemantics() throws {
+        clearSharedResumeState()
+        DailyCodexPersistenceService.shared.clear()
+        defer {
+            clearSharedResumeState()
+            DailyCodexPersistenceService.shared.clear()
+        }
+
+        let dayID = uniqueDayID()
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+        scene.testingLoadTerminalState(
+            mode: .daily(dayID: dayID, seed: seed),
+            emptyCoordinates: Set([HexCoordinate(1, 0), HexCoordinate(4, 2), HexCoordinate(6, 5)]),
+            tray: terminalTrayPieces(),
+            score: 70,
+            best: 40,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 40
+        )
+        let savesBefore = RunResiduePersistenceService.shared.saveInvocationCount
+        scene.testingSyncAll()
+        scene.testingSyncAll()
+        #expect(RunResiduePersistenceService.shared.saveInvocationCount == savesBefore + 1)
+    }
+}
+
+@Suite(.serialized)
+struct ReaderProfileRegressionTests {
+    @Test
+    func synthesizesChainLedProfileFromRecentHistory() throws {
+        let history = profileTestResidues(
+            lessons: [.chainConversion, .chainConversion, .chainConversion, .anchorDiscipline]
+        )
+        let profile = ReaderProfileEvaluator.synthesize(
+            input: .init(recentResidues: history, recognizedMastery: [.chainReader])
+        )
+        let synthesized = try #require(profile)
+        #expect(synthesized.headline == VexloStrings.ReaderProfile.headlineChainLed)
+        #expect(synthesized.strength == VexloStrings.ReaderProfile.strengthChainReader)
+        #expect(synthesized.basisRunCount == 4)
+    }
+
+    @Test
+    func insufficientHistoryReturnsNoProfile() {
+        let history = profileTestResidues(lessons: [.chainConversion, .anchorDiscipline])
+        #expect(
+            ReaderProfileEvaluator.synthesize(
+                input: .init(recentResidues: history, recognizedMastery: [])
+            ) == nil
+        )
+    }
+
+    @Test
+    func growthEdgeReflectsLanePatternTruthfully() throws {
+        let history = profileTestResidues(
+            lessons: [.chainConversion, .chainConversion, .laneOpening, .laneOpening, .anchorDiscipline]
+        )
+        let profile = try #require(
+            ReaderProfileEvaluator.synthesize(
+                input: .init(recentResidues: history, recognizedMastery: [])
+            )
+        )
+        #expect(profile.growthEdge == VexloStrings.ReaderProfile.growthOpenLaneEarlier)
+    }
+
+    @Test
+    func tightBoardDominanceUsesHonestHeadlineAndGrowth() throws {
+        let history = profileTestResidues(
+            lessons: [.noClear, .noClear, .noClear, .laneOpening]
+        )
+        let profile = try #require(
+            ReaderProfileEvaluator.synthesize(
+                input: .init(recentResidues: history, recognizedMastery: [])
+            )
+        )
+        #expect(profile.headline == VexloStrings.ReaderProfile.headlineTightBoard)
+        #expect(profile.growthEdge == VexloStrings.ReaderProfile.growthOpenLaneEarlier)
+    }
+
+    @Test
+    func utilityProfileBlockNilWhenHistorySparse() {
+        let defaults = UserDefaults(suiteName: "ReaderProfileRegressionTests.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let service = ReaderProfileService(
+            residuePersistence: RunResiduePersistenceService(
+                defaults: defaults,
+                isCaptureModeProvider: { false }
+            ),
+            masteryPersistence: MasteryRecognitionPersistenceService(
+                defaults: defaults,
+                isCaptureModeProvider: { false }
+            ),
+            isCaptureModeProvider: { false }
+        )
+        #expect(service.utilityProfileBlock() == nil)
+    }
+
+    @Test
+    func profileSynthesisDoesNotMutateResiduePersistence() {
+        let defaults = UserDefaults(suiteName: "ReaderProfileRegressionTests.residue.\(UUID().uuidString)")!
+        defer { defaults.removePersistentDomain(forName: defaults.description) }
+
+        let persistence = RunResiduePersistenceService(defaults: defaults, isCaptureModeProvider: { false })
+        for lesson in [RunResidueRecord.LessonFlag].init(
+            repeating: .chainConversion,
+            count: 4
+        ) {
+            persistence.save(
+                profileTestResidue(lessonFlag: lesson, timestamp: Date())
+            )
+        }
+        let savesBefore = persistence.saveInvocationCount
+        _ = ReaderProfileService(
+            residuePersistence: persistence,
+            masteryPersistence: MasteryRecognitionPersistenceService(
+                defaults: defaults,
+                isCaptureModeProvider: { false }
+            ),
+            isCaptureModeProvider: { false }
+        ).currentProfile()
+        #expect(persistence.saveInvocationCount == savesBefore)
+        #expect(persistence.loadHistory().count == 4)
+    }
+}
+
+private func profileTestResidues(
+    lessons: [RunResidueRecord.LessonFlag]
+) -> [RunResidueRecord] {
+    lessons.enumerated().map { index, lesson in
+        profileTestResidue(
+            lessonFlag: lesson,
+            timestamp: Date(timeIntervalSince1970: Double(2_000 + index))
+        )
+    }
+}
+
+private func profileTestResidue(
+    lessonFlag: RunResidueRecord.LessonFlag,
+    timestamp: Date
+) -> RunResidueRecord {
+    RunResidueRecord(
+        schemaVersion: RunResidueRecord.currentSchemaVersion,
+        timestamp: timestamp,
+        mode: .normal,
+        score: 220,
+        didClearAny: lessonFlag != .noClear,
+        maxCombo: lessonFlag == .chainConversion ? 2 : 1,
+        terminalPressureBand: lessonFlag == .pressureRelease ? "taut" : "calm",
+        readingDetailKey: "clear_rhythm_held",
+        lessonFlag: lessonFlag,
+        dailyDayID: nil,
+        dailyStreakCount: nil
+    )
+}
+
+@Suite(.serialized)
+struct EthicalMonetizationAttachmentRegressionTests {
+    @Test
+    func continueEligibleWhenRunHadReadingValueAndEngineCanResume() {
+        let verdict = EthicalMonetizationEvaluator.evaluateContinue(
+            context: monetizationAttachmentContext(
+                isGameOver: true,
+                didClearAny: true,
+                score: 200,
+                maxCombo: 2,
+                canEngineResumeAfterLoss: true
+            )
+        )
+        #expect(verdict.isEthicallyEligible)
+        #expect(verdict.denialReason == nil)
+        #expect(verdict.point == MonetizationAttachmentPoint.continueAfterLoss)
+    }
+
+    @Test
+    func continueDeniedWithoutReadingValue() {
+        let verdict = EthicalMonetizationEvaluator.evaluateContinue(
+            context: monetizationAttachmentContext(
+                isGameOver: true,
+                didClearAny: false,
+                score: 0,
+                maxCombo: 0,
+                canEngineResumeAfterLoss: true
+            )
+        )
+        #expect(!verdict.isEthicallyEligible)
+        #expect(verdict.denialReason == MonetizationAttachmentDenialReason.insufficientReadingValue)
+    }
+
+    @Test
+    func continueDeniedOnDailyAndAtOfferCap() {
+        let daily = EthicalMonetizationEvaluator.evaluateContinue(
+            context: monetizationAttachmentContext(isDailyChallenge: true, isGameOver: true)
+        )
+        #expect(daily.denialReason == MonetizationAttachmentDenialReason.dailyModeExcluded)
+
+        let capped = EthicalMonetizationEvaluator.evaluateContinue(
+            context: monetizationAttachmentContext(
+                isGameOver: true,
+                didClearAny: true,
+                canEngineResumeAfterLoss: true,
+                continueOffersPresented: 1
+            )
+        )
+        #expect(capped.denialReason == MonetizationAttachmentDenialReason.offerCapReached)
+    }
+
+    @Test
+    func rerollStaysMidRunBoundedAndNonDaily() {
+        let eligible = EthicalMonetizationEvaluator.evaluateReroll(
+            context: monetizationAttachmentContext(
+                isGameOver: false,
+                canEngineRerollAtRequestedSlot: true,
+                runsStarted: 10
+            )
+        )
+        #expect(eligible.isEthicallyEligible)
+
+        let daily = EthicalMonetizationEvaluator.evaluateReroll(
+            context: monetizationAttachmentContext(isDailyChallenge: true, runsStarted: 10)
+        )
+        #expect(daily.denialReason == MonetizationAttachmentDenialReason.dailyModeExcluded)
+
+        let ended = EthicalMonetizationEvaluator.evaluateReroll(
+            context: monetizationAttachmentContext(
+                isGameOver: true,
+                runsStarted: 10
+            )
+        )
+        #expect(ended.denialReason == MonetizationAttachmentDenialReason.runAlreadyEnded)
+
+        let capped = EthicalMonetizationEvaluator.evaluateReroll(
+            context: monetizationAttachmentContext(
+                canEngineRerollAtRequestedSlot: true,
+                rerollOffersPresented: 1,
+                runsStarted: 10
+            )
+        )
+        #expect(capped.denialReason == MonetizationAttachmentDenialReason.offerCapReached)
+    }
+
+    @Test
+    func supporterAttachmentRespectsPatronBoundaries() {
+        let eligible = EthicalMonetizationEvaluator.evaluateSupporter(
+            context: monetizationAttachmentContext(sessionCount: 3, runsStarted: 8)
+        )
+        #expect(eligible.isEthicallyEligible)
+
+        let owned = EthicalMonetizationEvaluator.evaluateSupporter(
+            context: monetizationAttachmentContext(
+                sessionCount: 3,
+                runsStarted: 8,
+                supporterOwned: true
+            )
+        )
+        #expect(owned.denialReason == MonetizationAttachmentDenialReason.supporterAlreadyOwned)
+
+        let spineLines = EthicalMonetizationEvaluator.supporterValueTiedToRetentionSpine()
+        #expect(spineLines.count == 3)
+        #expect(spineLines.contains(VexloStrings.MonetizationAttachment.supporterSpineEarnedMemory))
+    }
+
+    @Test
+    func atelierAllowsOnlyConstrainedCosmeticCategories() {
+        for category in AtelierCosmeticCategory.allCases {
+            let verdict = EthicalMonetizationEvaluator.evaluateAtelier(category: category)
+            #expect(verdict.isEthicallyEligible)
+        }
+
+        let forbidden = EthicalMonetizationEvaluator.evaluateAtelier(
+            category: .boardFrameFinish,
+            requestedGrant: ForbiddenMonetizationGrant.scoreOrComboPower
+        )
+        #expect(!forbidden.isEthicallyEligible)
+        #expect(forbidden.denialReason == MonetizationAttachmentDenialReason.forbiddenGrantRequested)
+    }
+
+    @Test
+    func attachmentCatalogNeverGrantsPowerOrBreaksSpine() {
+        let catalog = EthicalMonetizationAttachmentService.shared.attachmentCatalog()
+        #expect(catalog.count == MonetizationAttachmentPoint.allCases.count)
+        #expect(catalog.allSatisfy { $0.neverGrantsPower })
+        #expect(catalog.allSatisfy { $0.respectsRetentionSpine })
+        #expect(ForbiddenMonetizationGrant.allCases.contains(ForbiddenMonetizationGrant.masteryUnlock))
+        #expect(ForbiddenMonetizationGrant.allCases.contains(ForbiddenMonetizationGrant.codexUnlock))
+    }
+
+    @Test
+    func policyConstantsAlignWithExistingMonetizationRunGates() {
+        #expect(EthicalMonetizationPolicy.maxContinueOffersPerRun == 1)
+        #expect(EthicalMonetizationPolicy.maxRerollOffersPerRun == 1)
+        #expect(EthicalMonetizationPolicy.rerollUnlockRunCount == 8)
+        #expect(EthicalMonetizationPolicy.supporterVisibilityRunCount == 6)
+    }
+}
+
+@Suite(.serialized)
+struct EthicalMonetizationWiringRegressionTests {
+    @Test
+    func continueHiddenWhenMonetizationAllowsButEthicsDenyNoReadingValue() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 0,
+            best: 100,
+            combo: 0,
+            didClearAny: false,
+            maxCombo: 0,
+            runStartBest: 80
+        )
+        scene.testingSyncAll()
+
+        #expect(scene.testingTerminalFinalizationState.isGameOver)
+        #expect(!scene.testingTerminalFinalizationState.canShowContinueAfterLoss)
+    }
+
+    @Test
+    func continueVisibleWhenMonetizationAndEthicsBothAllow() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+
+        #expect(scene.testingTerminalFinalizationState.canShowContinueAfterLoss)
+    }
+
+    @Test
+    func rerollHiddenAtTerminalEvenWhenMonetizationOverrideIsOn() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingLoadTerminalState(
+            mode: .normal,
+            emptyCoordinates: Set([HexCoordinate(0, 0), HexCoordinate(3, 3), HexCoordinate(6, 6)]),
+            tray: terminalTrayPieces(),
+            score: 240,
+            best: 240,
+            combo: 2,
+            didClearAny: true,
+            maxCombo: 2,
+            runStartBest: 180
+        )
+        scene.testingSyncAll()
+
+        #expect(scene.testingMonetizationOfferLifecycleState.isGameOver)
+        #expect(scene.testingMonetizationOfferLifecycleState.visibleRerollOfferSlots.isEmpty)
+    }
+
+    @Test
+    func rerollVisibleMidRunWhenMonetizationAndEthicsBothAllow() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .normal)
+        scene.testingSyncAll()
+
+        let slot = scene.testingMonetizationOfferLifecycleState.visibleRerollOfferSlots.sorted().first
+        #expect(slot != nil)
+        if let slot {
+            #expect(scene.canShowReroll(for: slot))
+        }
+    }
+
+    @Test
+    func dailyTerminalExcludesContinueAndRerollPresentation() throws {
+        clearSharedResumeState()
+        MonetizationService.shared.testingClearCanPresentOverrides()
+        defer {
+            MonetizationService.shared.testingClearCanPresentOverrides()
+            clearSharedResumeState()
+        }
+
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .continueAfterLoss)
+        MonetizationService.shared.testingSetCanPresentOverride(true, for: .rerollTrayPiece)
+
+        let dayID = uniqueDayID()
+        let seed = DailyChallengeService.shared.seed(for: dayID)
+        let scene = GameScene(size: CGSize(width: 390, height: 844))
+        scene.testingBeginSceneRun(mode: .daily(dayID: dayID, seed: seed))
+        scene.testingLoadTerminalState(
+            mode: .daily(dayID: dayID, seed: seed),
+            emptyCoordinates: Set([HexCoordinate(1, 0), HexCoordinate(4, 2), HexCoordinate(6, 5)]),
+            tray: terminalTrayPieces(),
+            score: 70,
+            best: 40,
+            combo: 1,
+            didClearAny: true,
+            maxCombo: 1,
+            runStartBest: 40
+        )
+        scene.testingSyncAll()
+
+        #expect(scene.testingTerminalFinalizationState.runMode != .normal)
+        #expect(!scene.testingTerminalFinalizationState.canShowContinueAfterLoss)
+        #expect(scene.testingMonetizationOfferLifecycleState.visibleRerollOfferSlots.isEmpty)
+    }
+}
+
+private func seedMonetizationMaturityForEthicalWiringTests() {
+    let defaults = UserDefaults.standard
+    defaults.set(4, forKey: "nf_vexlo_monetization_session_count")
+    defaults.set(10, forKey: "nf_vexlo_monetization_runs_started")
+}
+
+private func monetizationAttachmentContext(
+    isDailyChallenge: Bool = false,
+    isGameOver: Bool = false,
+    didClearAny: Bool = false,
+    score: Int = 0,
+    maxCombo: Int = 0,
+    hasUsedContinue: Bool = false,
+    hasUsedReroll: Bool = false,
+    canEngineResumeAfterLoss: Bool = false,
+    canEngineRerollAtRequestedSlot: Bool = false,
+    continueOffersPresented: Int = 0,
+    rerollOffersPresented: Int = 0,
+    sessionCount: Int = 3,
+    runsStarted: Int = 10,
+    supporterOwned: Bool = false,
+    commerceCapabilityAvailable: Bool = true
+) -> MonetizationAttachmentContext {
+    MonetizationAttachmentContext(
+        isDailyChallenge: isDailyChallenge,
+        isGameOver: isGameOver,
+        didClearAny: didClearAny,
+        score: score,
+        maxCombo: maxCombo,
+        hasUsedContinue: hasUsedContinue,
+        hasUsedReroll: hasUsedReroll,
+        canEngineResumeAfterLoss: canEngineResumeAfterLoss,
+        canEngineRerollAtRequestedSlot: canEngineRerollAtRequestedSlot,
+        continueOffersPresented: continueOffersPresented,
+        rerollOffersPresented: rerollOffersPresented,
+        sessionCount: sessionCount,
+        runsStarted: runsStarted,
+        supporterOwned: supporterOwned,
+        commerceCapabilityAvailable: commerceCapabilityAvailable
+    )
+}
+
 private func clearSharedResumeState() {
     SystemEntryService.shared.clearResumableRun()
     LiveRunPersistenceService.shared.clear()
+    RunResiduePersistenceService.shared.clear()
+    MasteryRecognitionPersistenceService.shared.clear()
+    DailyCodexPersistenceService.shared.clear()
 }
 
 private struct AnalyticsSnapshot: Decodable {

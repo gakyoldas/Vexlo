@@ -212,6 +212,213 @@ enum VexloStrings {
         static let readUnderPressure = localized("run.reading.under_pressure", value: "Read under pressure")
     }
 
+    enum MonetizationAttachment {
+        static let continueIntent = localized(
+            "monetization.attach.continue_intent",
+            value: "One honest recovery after a run that already had reading shape."
+        )
+        static let rerollIntent = localized(
+            "monetization.attach.reroll_intent",
+            value: "One tray reshuffle mid-run—never a gamble surface."
+        )
+        static let supporterIntent = localized(
+            "monetization.attach.supporter_intent",
+            value: "Patronage for quieter practice and craft support."
+        )
+        static let atelierIntent = localized(
+            "monetization.attach.atelier_intent",
+            value: "Durable self-expression through mineral finishes only."
+        )
+
+        static let continueFraming = localized(
+            "monetization.attach.continue_framing",
+            value: "Recover the run once when the read already had shape."
+        )
+        static let rerollFraming = localized(
+            "monetization.attach.reroll_framing",
+            value: "Reshuffle one tray piece during an active run."
+        )
+        static let supporterFraming = localized(
+            "monetization.attach.supporter_framing",
+            value: "Support the craft: quieter practice, ad-free continue and reroll."
+        )
+        static let atelierFraming = localized(
+            "monetization.attach.atelier_framing",
+            value: "Own calm mineral finishes—never power or pressure."
+        )
+
+        static let supporterSpineUninterrupted = localized(
+            "monetization.attach.supporter_spine_practice",
+            value: "Uninterrupted normal practice when offers are available."
+        )
+        static let supporterSpineEarnedMemory = localized(
+            "monetization.attach.supporter_spine_memory",
+            value: "Residue, mastery, codex, and reader memory stay earned—not sold."
+        )
+        static let supporterSpineNoPower = localized(
+            "monetization.attach.supporter_spine_no_power",
+            value: "No score, combo, or board-power grants."
+        )
+    }
+
+    enum ReaderProfile {
+        static let sectionHeader = localized("reader.section_header", value: "Reader")
+
+        static let headlineChainLed = localized(
+            "reader.headline.chain_led",
+            value: "Lately, your reads have been chain-led."
+        )
+        static let headlineAnchorLed = localized(
+            "reader.headline.anchor_led",
+            value: "Lately, your reads hold steady anchors."
+        )
+        static let headlinePressureLed = localized(
+            "reader.headline.pressure_led",
+            value: "Lately, you read through pressure."
+        )
+        static let headlineLaneLed = localized(
+            "reader.headline.lane_led",
+            value: "Lately, lane shape has led your reads."
+        )
+        static let headlineRecoveryLed = localized(
+            "reader.headline.recovery_led",
+            value: "Lately, recovery has shaped your runs."
+        )
+        static let headlineTightBoard = localized(
+            "reader.headline.tight_board",
+            value: "Lately, the board has stayed tight."
+        )
+
+        static let strengthChainReader = localized(
+            "reader.strength.chain_reader",
+            value: "Chains convert when openness holds through the turn."
+        )
+        static let strengthPressureReader = localized(
+            "reader.strength.pressure_reader",
+            value: "You keep structure alive under pressure."
+        )
+        static let strengthAnchorReader = localized(
+            "reader.strength.anchor_reader",
+            value: "Clear rhythm holds when the board stays open."
+        )
+        static let strengthLaneReader = localized(
+            "reader.strength.lane_reader",
+            value: "You sense when lanes narrow before they close."
+        )
+        static let strengthRecoveryReader = localized(
+            "reader.strength.recovery_reader",
+            value: "You recover board shape after late slips."
+        )
+
+        static let strengthChainLed = localized(
+            "reader.strength.chain_led",
+            value: "Chain reads are landing when pace holds."
+        )
+        static let strengthAnchorLed = localized(
+            "reader.strength.anchor_led",
+            value: "Steady clears are carrying the run."
+        )
+        static let strengthPressureLed = localized(
+            "reader.strength.pressure_led",
+            value: "Pressure reads still find release."
+        )
+        static let strengthLaneLed = localized(
+            "reader.strength.lane_led",
+            value: "You notice board closure before it sets."
+        )
+        static let strengthRecoveryLed = localized(
+            "reader.strength.recovery_led",
+            value: "Late recovery is keeping runs alive."
+        )
+        static let strengthTightBoard = localized(
+            "reader.strength.tight_board",
+            value: "You stay with the board even when clears are thin."
+        )
+        static let strengthTightWithLanes = localized(
+            "reader.strength.tight_lanes",
+            value: "Lane reads appear once structure opens."
+        )
+
+        static let growthOpenLaneEarlier = localized(
+            "reader.growth.open_lane",
+            value: "More value appears when you open one lane earlier."
+        )
+        static let growthExtendChainConversion = localized(
+            "reader.growth.extend_chain",
+            value: "Let the next chain extend before the board closes."
+        )
+        static let growthReleaseUnderPressure = localized(
+            "reader.growth.release_pressure",
+            value: "Release pressure one turn earlier under a taut board."
+        )
+        static let growthKeepAnchorOpen = localized(
+            "reader.growth.keep_anchor",
+            value: "Keep one anchor open through the next read."
+        )
+        static let growthReleaseEarlier = localized(
+            "reader.growth.release_earlier",
+            value: "Earlier release will lighten the next pressure read."
+        )
+        static let growthStabilizeEarlier = localized(
+            "reader.growth.stabilize_earlier",
+            value: "Stabilize one turn earlier before recovery is needed."
+        )
+    }
+
+    enum DailyCodex {
+        static let ritualHeader = localized("codex.ritual_header", value: "Ritual")
+        static let bestTodaySuffix = localized("codex.best_today_suffix", value: " · Best today")
+
+        static func entryLine(weekday: String, phrase: String, score: Int) -> String {
+            String(
+                format: localized("codex.entry_line", value: "%@ · %@ · %d"),
+                weekday,
+                phrase,
+                score
+            )
+        }
+    }
+
+    enum Mastery {
+        static let laneReader = localized("mastery.lane_reader", value: "Lane reader")
+        static let anchorReader = localized("mastery.anchor_reader", value: "Anchor reader")
+        static let pressureReader = localized("mastery.pressure_reader", value: "Pressure reader")
+        static let chainReader = localized("mastery.chain_reader", value: "Chain reader")
+        static let recoveryReader = localized("mastery.recovery_reader", value: "Recovery reader")
+
+        static func readingPattern(_ competencies: String) -> String {
+            String(
+                format: localized("mastery.reading_pattern", value: "Reading pattern: %@"),
+                competencies
+            )
+        }
+    }
+
+    enum RunResidue {
+        static let dailyStrongCompletion = localized("residue.daily_strong", value: "Strong board read")
+        static let dailyModestCompletion = localized("residue.daily_modest", value: "Board foothold held")
+        static let dailyWeakRecorded = localized("residue.daily_weak", value: "Recorded finish")
+        static let dailyRecorded = localized("residue.daily_recorded", value: "Today's board")
+
+        static func lastRead(phrase: String) -> String {
+            String(format: localized("residue.last_read", value: "Last read: %@"), phrase)
+        }
+
+        static func lastDaily(weekday: String, phrase: String) -> String {
+            if weekday.isEmpty {
+                return String(
+                    format: localized("residue.last_daily_no_weekday", value: "Last daily: %@"),
+                    phrase
+                )
+            }
+            return String(
+                format: localized("residue.last_daily", value: "Last daily: %@ · %@"),
+                weekday,
+                phrase
+            )
+        }
+    }
+
     enum Utility {
         static let soundOn = localized("utility.sound_on", value: "Sound On")
         static let soundOff = localized("utility.sound_off", value: "Sound Off")

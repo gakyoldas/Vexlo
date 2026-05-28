@@ -247,6 +247,28 @@ final class MonetizationService {
             nil
         }
     }
+
+    struct AttachmentSnapshot: Equatable {
+        let continueOfferCount: Int
+        let rerollOfferCount: Int
+        let sessionCount: Int
+        let runsStarted: Int
+        let supporterOwned: Bool
+        let continueCommerceAvailable: Bool
+        let rerollCommerceAvailable: Bool
+    }
+
+    func attachmentSnapshot() -> AttachmentSnapshot {
+        AttachmentSnapshot(
+            continueOfferCount: runState.continueOfferCount,
+            rerollOfferCount: runState.rerollOfferCount,
+            sessionCount: sessionCount,
+            runsStarted: runsStarted,
+            supporterOwned: capabilities.supporterOwned,
+            continueCommerceAvailable: capabilities.supports(.continueAfterLoss),
+            rerollCommerceAvailable: capabilities.supports(.rerollTrayPiece)
+        )
+    }
 }
 
 extension MonetizationService {
@@ -276,5 +298,10 @@ extension MonetizationService {
 
     func testingClearCanPresentOverrides() {
         testingCanPresentOverrides.removeAll()
+    }
+
+    func testingForceRewardedCommerceCapabilitiesForPresentation() {
+        capabilities.rewardedContinueAvailable = true
+        capabilities.rewardedRerollAvailable = true
     }
 }

@@ -41,6 +41,12 @@ final class GameScene: SKScene {
     var utilityExportLabel = SKLabelNode()
     var utilityNewRunLabel = SKLabelNode()
     var utilityStudioLabel = SKLabelNode()
+    var utilityResidueLabel = SKLabelNode()
+    var utilityMasteryLabel = SKLabelNode()
+    var utilityRitualHeaderLabel = SKLabelNode()
+    var utilityRitualLabel = SKLabelNode()
+    var utilityProfileHeaderLabel = SKLabelNode()
+    var utilityProfileLabel = SKLabelNode()
     private let resultOverlay = ResultOverlaySurface()
     private var lastScoreValue: Int = 0
     private var lastBestValue: Int = 0
@@ -327,9 +333,22 @@ final class GameScene: SKScene {
             shareLabel.text = VexloStrings.Overlay.shareResult
             let shouldShowShare = GameScene.shouldShowResultShare(canShare: canShare, showsContinue: showsContinue)
             shareLabel.isHidden = !shouldShowShare
-            shareLabel.alpha = shouldShowShare ? (isDaily ? 0.56 : 0.72) : 0
+            let isQuietHonorShare = !(badgeLabel.text?.isEmpty ?? true) && !isDaily
+            let shareLabelAlpha: CGFloat
+            let shareIconAlpha: CGFloat
+            if isDaily {
+                shareLabelAlpha = 0.64
+                shareIconAlpha = 0.60
+            } else if isQuietHonorShare {
+                shareLabelAlpha = 0.62
+                shareIconAlpha = 0.58
+            } else {
+                shareLabelAlpha = 0.68
+                shareIconAlpha = 0.64
+            }
+            shareLabel.alpha = shouldShowShare ? shareLabelAlpha : 0
             shareIcon.isHidden = !shouldShowShare
-            shareIcon.alpha = shouldShowShare ? (isDaily ? 0.52 : 0.72) : 0
+            shareIcon.alpha = shouldShowShare ? shareIconAlpha : 0
             relayout(size: size, metrics: metrics, isDaily: isDaily, score: Int(scoreLabel.text ?? "") ?? 0, fitLabelWidth: fitLabelWidth)
         }
 
@@ -658,27 +677,26 @@ final class GameScene: SKScene {
             captionLabel.fontColor = UIColor(hex: "ECEEF7").withAlphaComponent(0.95)
             captionLabel.alpha = 1.0
             captionLabel.fontSize = 25.8 * fontScale
-            detailLabel.fontName = "SFProDisplay-Medium"
-            detailLabel.fontColor = UIColor(hex: "E8ECF4").withAlphaComponent(0.92)
-            detailLabel.alpha = isWeakScoreTerminal ? 0.82 : 0.88
+            detailLabel.fontName = "SFProDisplay-Semibold"
+            detailLabel.fontColor = UIColor(hex: "ECEFF7").withAlphaComponent(0.96)
+            detailLabel.alpha = isWeakScoreTerminal ? 0.86 : 0.94
             detailLabel.fontSize = 16.8 * fontScale * detailScale
             scoreLabel.fontSize = 98 * fontScale * lowScoreScale
             scoreShadowLabel.fontSize = 98 * fontScale * lowScoreScale
             scoreShadowLabel.alpha = isZeroScoreTerminal ? 0.14 : 0.18
             scoreLabel.alpha = 1.0
             let isNormalHistoryLineVisible = !isDaily && !(progressLabel.text?.isEmpty ?? true)
-            progressLabel.fontName = "SFProDisplay-Semibold"
-            progressLabel.fontSize = 13.2 * fontScale
-            progressLabel.fontColor = UIColor(hex: "DCE2EF")
-            progressLabel.alpha = isDaily ? 0.74 : (isEditorialTerminal ? 0.88 : (isNormalHistoryLineVisible ? 0.84 : 0.70))
-            gamesLabel.fontName = "SFProDisplay-Semibold"
-            gamesLabel.fontSize = 13.2 * fontScale
-            gamesLabel.fontColor = UIColor(hex: "D7DEED")
-            gamesLabel.alpha = gamesLabel.isHidden ? 0 : 0.82
-            shareLabel.fontName = "SFProDisplay-Semibold"
-            shareLabel.fontSize = 12.9 * fontScale
-            shareLabel.fontColor = UIColor(hex: "D7DFEE").withAlphaComponent(isDaily ? 0.60 : 0.72)
-            shareIcon.alpha = isDaily ? 0.56 : 0.70
+            progressLabel.fontName = "SFProDisplay-Regular"
+            progressLabel.fontSize = 12.4 * fontScale
+            progressLabel.fontColor = UIColor(hex: "B8C0D4")
+            progressLabel.alpha = isDaily ? 0.62 : (isEditorialTerminal ? 0.72 : (isNormalHistoryLineVisible ? 0.66 : 0.58))
+            gamesLabel.fontName = "SFProDisplay-Regular"
+            gamesLabel.fontSize = 12.4 * fontScale
+            gamesLabel.fontColor = UIColor(hex: "B8C0D4")
+            gamesLabel.alpha = gamesLabel.isHidden ? 0 : 0.64
+            shareLabel.fontName = "SFProDisplay-Medium"
+            shareLabel.fontSize = 12.2 * fontScale
+            shareLabel.fontColor = UIColor(hex: isDaily ? "B8C4DC" : "C4CBE2")
 
             if isDaily {
                 badgeLabel.fontName = "SFProDisplay-Semibold"
@@ -733,7 +751,7 @@ final class GameScene: SKScene {
             let minimumRestartTop = trayTop + (isCompactHeight ? 22 : 12)
             let restartCenterY = max(desiredRestartCenterY, minimumRestartTop + restartSize.height * 0.5)
             let restartTopEdge = restartCenterY + restartSize.height * 0.5
-            let minimumShareGap = (isCompactHeight ? 26 : 32) * masterScaleY(for: size)
+            let minimumShareGap = (isCompactHeight ? 32 : 40) * masterScaleY(for: size)
             let minimumShareCenterY = restartTopEdge + minimumShareGap + shareActionHeight * 0.5
             let scoreLiftY = (isZeroScoreTerminal ? (10 * fontScale) : (isWeakScoreTerminal ? (7 * fontScale) : (4 * fontScale))) + (hasHonorBadge ? (2 * fontScale) : 0)
             let detailLiftY = (isZeroScoreTerminal ? (10 * fontScale) : (isWeakScoreTerminal ? (8 * fontScale) : (6 * fontScale))) + (hasHonorBadge ? (2 * fontScale) : (1.5 * fontScale))
@@ -767,48 +785,60 @@ final class GameScene: SKScene {
             scoreField.strokeColor = UIColor.white.withAlphaComponent(isZeroScoreTerminal ? 0.012 : 0.008)
             detailLabel.position = CGPoint(x: centerX, y: detailY + detailLiftY + (1.2 * fontScale))
 
-            let supportTopGap = hasSupportContent ? (52 * fontScale) : (48 * fontScale)
-            var supportCenterY = detailLabel.position.y - supportTopGap
-            let supportUpperOffset = 8 * fontScale
-            let supportLowerOffset = 8 * fontScale
-            let supportToShareGap = (isCompactHeight ? 30 : 34) * fontScale
-            let supportSingleLineDescent = 9 * fontScale
-            let supportDoubleLineDescent = 11 * fontScale
-            let shareToRestartGap = (isCompactHeight ? 30 : 34) * scaleY
+            let hasSecondaryLine = !progressLabel.isHidden || !gamesLabel.isHidden
+            let hasDualSupportLines = !progressLabel.isHidden && !gamesLabel.isHidden
+            let supportToShareGap = (isCompactHeight ? 38 : 42) * fontScale
+            let shareToRestartGap = (isCompactHeight ? 36 : 42) * scaleY
             let shareLabelOpticalOffset = shareLabel.fontSize * 0.12
 
-            let supportLineBottomOffset: CGFloat = (!progressLabel.isHidden && !gamesLabel.isHidden) ? supportDoubleLineDescent : supportSingleLineDescent
-            let desiredSupportBottomY = minimumShareCenterY + shareActionHeight * 0.5 + supportToShareGap
-            let actualSupportBottomY = supportCenterY - supportLineBottomOffset
-            if actualSupportBottomY < desiredSupportBottomY {
-                supportCenterY += desiredSupportBottomY - actualSupportBottomY
+            func labelLineHalfHeight(_ label: SKLabelNode) -> CGFloat {
+                max(7.5, label.fontSize * 0.56)
             }
 
-            if !progressLabel.isHidden && !gamesLabel.isHidden {
-                progressLabel.position = CGPoint(x: centerX, y: supportCenterY + supportUpperOffset)
-                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - supportLowerOffset)
+            let primaryHalf = labelLineHalfHeight(detailLabel)
+            let progressHalf = labelLineHalfHeight(progressLabel)
+            let gamesHalf = labelLineHalfHeight(gamesLabel)
+            let primaryToSecondaryGap = (isDaily && hasSecondaryLine) ? (20 * fontScale) : (18 * fontScale)
+            let secondaryLineGap = 10 * fontScale
+
+            var interpretationBottomY = detailLabel.position.y - primaryHalf
+
+            if hasDualSupportLines {
+                let progressCenterY = interpretationBottomY - primaryToSecondaryGap - progressHalf
+                let gamesCenterY = progressCenterY - progressHalf - secondaryLineGap - gamesHalf
+                progressLabel.position = CGPoint(x: centerX, y: progressCenterY)
+                gamesLabel.position = CGPoint(x: centerX, y: gamesCenterY)
+                interpretationBottomY = gamesCenterY - gamesHalf
             } else if !progressLabel.isHidden {
-                progressLabel.position = CGPoint(x: centerX, y: supportCenterY)
-                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - (12 * fontScale))
+                let progressCenterY = interpretationBottomY - primaryToSecondaryGap - progressHalf
+                progressLabel.position = CGPoint(x: centerX, y: progressCenterY)
+                interpretationBottomY = progressCenterY - progressHalf
+                gamesLabel.position = CGPoint(x: centerX, y: progressCenterY - (12 * fontScale))
             } else if !gamesLabel.isHidden {
-                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY)
-                progressLabel.position = CGPoint(x: centerX, y: supportCenterY + (12 * fontScale))
+                let gamesCenterY = interpretationBottomY - primaryToSecondaryGap - gamesHalf
+                gamesLabel.position = CGPoint(x: centerX, y: gamesCenterY)
+                interpretationBottomY = gamesCenterY - gamesHalf
+                progressLabel.position = CGPoint(x: centerX, y: gamesCenterY + (12 * fontScale))
             } else {
-                progressLabel.position = CGPoint(x: centerX, y: supportCenterY)
-                gamesLabel.position = CGPoint(x: centerX, y: supportCenterY - (12 * fontScale))
+                progressLabel.position = CGPoint(x: centerX, y: interpretationBottomY - (12 * fontScale))
+                gamesLabel.position = CGPoint(x: centerX, y: interpretationBottomY - (24 * fontScale))
             }
+
+            let maxSecondaryCenterY = detailLabel.position.y - primaryHalf - primaryToSecondaryGap - progressHalf
+            if !progressLabel.isHidden, progressLabel.position.y > maxSecondaryCenterY {
+                let progressCenterY = maxSecondaryCenterY
+                progressLabel.position = CGPoint(x: centerX, y: progressCenterY)
+                interpretationBottomY = progressCenterY - progressHalf
+                if !gamesLabel.isHidden {
+                    let gamesCenterY = interpretationBottomY - secondaryLineGap - gamesHalf
+                    gamesLabel.position = CGPoint(x: centerX, y: gamesCenterY)
+                    interpretationBottomY = gamesCenterY - gamesHalf
+                }
+            }
+
+            let supportBottomY = interpretationBottomY - (hasSecondaryLine ? (4 * fontScale) : (10 * fontScale))
 
             if !shareLabel.isHidden {
-                let supportBottomY: CGFloat
-                if !progressLabel.isHidden && !gamesLabel.isHidden {
-                    supportBottomY = min(progressLabel.position.y, gamesLabel.position.y) - supportDoubleLineDescent
-                } else if !progressLabel.isHidden {
-                    supportBottomY = progressLabel.position.y - supportSingleLineDescent
-                } else if !gamesLabel.isHidden {
-                    supportBottomY = gamesLabel.position.y - supportSingleLineDescent
-                } else {
-                    supportBottomY = detailLabel.position.y - (30 * fontScale)
-                }
                 let desiredShareCenterY = supportBottomY - supportToShareGap - shareActionHeight * 0.5
                 let shareCenterY = max(minimumShareCenterY, desiredShareCenterY)
                 let shareText = shareLabel.text ?? ""
@@ -834,8 +864,11 @@ final class GameScene: SKScene {
                 shareIcon.isHidden = true
             }
 
-            let fallbackShareCenterY = minimumShareCenterY
-            continueButton.position = CGPoint(x: centerX, y: fallbackShareCenterY - shareToRestartGap)
+            let supportBottomYForActions = supportBottomY
+            let continueActionHeight = metrics.overlayContinueSize.height
+            let desiredContinueCenterY = supportBottomYForActions - supportToShareGap - continueActionHeight * 0.5
+            let continueCenterY = max(minimumShareCenterY, desiredContinueCenterY)
+            continueButton.position = CGPoint(x: centerX, y: continueCenterY)
 
             restartButton.path = CGPath(
                 roundedRect: CGRect(
@@ -912,7 +945,7 @@ final class GameScene: SKScene {
             let monumentVeilLeading: CGFloat = 44
             let monumentVeilWidth: CGFloat = 352
             let monumentVeilTopInset: CGFloat = isWeakScoreTerminal ? 46 : 40
-            let monumentVeilBottomInset: CGFloat = hasSupportContent ? 84 : 72
+            let monumentVeilBottomInset: CGFloat = hasDualSupportLines ? 96 : (hasSupportContent ? 88 : 74)
             let monumentFieldCornerRadius: CGFloat = 84
             let monumentAuraCornerRadius: CGFloat = 182
             let monumentVeilCornerRadius: CGFloat = 192
@@ -1735,6 +1768,12 @@ final class GameScene: SKScene {
         utilityRestoreLabel.removeAllActions()
         utilityExportLabel.removeAllActions()
         utilityNewRunLabel.removeAllActions()
+        utilityResidueLabel.removeAllActions()
+        utilityMasteryLabel.removeAllActions()
+        utilityRitualHeaderLabel.removeAllActions()
+        utilityRitualLabel.removeAllActions()
+        utilityProfileHeaderLabel.removeAllActions()
+        utilityProfileLabel.removeAllActions()
         utilityStudioLabel.removeAllActions()
         modeLabel.removeAllActions()
         isPresentingDailyArrivalBeat = false
@@ -2006,6 +2045,55 @@ final class GameScene: SKScene {
             maxCombo: engine.maxCombo,
             didClearAny: engine.didClearAny
         )
+        persistRunResidueIfNeeded()
+    }
+
+    private func persistRunResidueIfNeeded() {
+        guard !LaunchSupport.shared.isCaptureMode else { return }
+        let record: RunResidueRecord?
+        if engine.isDailyChallenge {
+            guard let dayID = engine.dailyChallengeDayID else { return }
+            record = RunResidueRecord.makeDaily(
+                dayID: dayID,
+                completion: lastDailyCompletion,
+                didClearAny: engine.didClearAny,
+                score: engine.scoreEngine.score,
+                maxCombo: engine.maxCombo,
+                terminalPressureBand: engine.boardPressureSnapshot().band
+            )
+        } else {
+            let pressureContext = engine.boardPressureContext()
+            record = RunResidueRecord.makeNormal(
+                context: RunReadingContext(
+                    score: engine.scoreEngine.score,
+                    best: engine.scoreEngine.best,
+                    runStartBest: runStartBest,
+                    maxCombo: engine.maxCombo,
+                    didClearAny: engine.didClearAny,
+                    hasUsedContinue: engine.hasUsedContinue,
+                    terminalPressureBand: engine.boardPressureSnapshot().band,
+                    occupiedCellCount: pressureContext.occupiedCellCount,
+                    completedRuns: GameCenterService.shared.completedRunCount
+                )
+            )
+        }
+        guard let record else { return }
+        RunResiduePersistenceService.shared.save(record)
+        MasteryRecognitionService.shared.refreshAfterTerminalResidue()
+        persistDailyCodexIfNeeded(record: record)
+    }
+
+    private func persistDailyCodexIfNeeded(record: RunResidueRecord) {
+        guard !LaunchSupport.shared.isCaptureMode,
+              engine.isDailyChallenge,
+              let dayID = engine.dailyChallengeDayID,
+              let completion = lastDailyCompletion else { return }
+        DailyCodexService.shared.recordTerminalDaily(
+            dayID: dayID,
+            completion: completion,
+            didClearAny: engine.didClearAny,
+            residue: record
+        )
     }
 
     private func startMonetizationRunIfNeeded() {
@@ -2028,7 +2116,8 @@ final class GameScene: SKScene {
     func canShowContinueAfterLoss() -> Bool {
         guard !engine.isDailyChallenge else { return false }
         guard engine.canResumeAfterLoss() else { return false }
-        return MonetizationService.shared.canPresent(.continueAfterLoss)
+        guard MonetizationService.shared.canPresent(.continueAfterLoss) else { return false }
+        return isEthicallyEligibleForContinuePresentation()
     }
 
     func canShowReroll(for slotIndex: Int) -> Bool {
@@ -2040,7 +2129,24 @@ final class GameScene: SKScene {
               !isPresentingReroll,
               dragPiece == nil else { return false }
         guard engine.canRerollPiece(at: slotIndex) else { return false }
-        return MonetizationService.shared.canPresent(.rerollTrayPiece)
+        guard MonetizationService.shared.canPresent(.rerollTrayPiece) else { return false }
+        return isEthicallyEligibleForRerollPresentation(slotIndex: slotIndex)
+    }
+
+    private func isEthicallyEligibleForContinuePresentation() -> Bool {
+        let context = MonetizationAttachmentContext.live(for: .continueAfterLoss, engine: engine)
+        return EthicalMonetizationAttachmentService.shared.continuePresentationVerdict(context: context)
+            .isEthicallyEligible
+    }
+
+    private func isEthicallyEligibleForRerollPresentation(slotIndex: Int) -> Bool {
+        let context = MonetizationAttachmentContext.live(
+            for: .rerollTrayPiece,
+            engine: engine,
+            rerollSlotIndex: slotIndex
+        )
+        return EthicalMonetizationAttachmentService.shared.rerollPresentationVerdict(context: context)
+            .isEthicallyEligible
     }
 
     private func updateContinueSurface() {

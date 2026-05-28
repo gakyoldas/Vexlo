@@ -33,6 +33,7 @@ extension GameScene {
     }
 
     static func playCommitPlaceHaptic(_ commitHaptic: MoveQualityCommitHaptic) {
-        HapticsService.shared.playPlace(commitHaptic: commitHaptic)
+        _ = commitHaptic
+        HapticsService.shared.playPlace()
     }
 }

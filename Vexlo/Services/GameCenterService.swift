@@ -23,6 +23,19 @@ final class GameCenterService: NSObject, GKGameCenterControllerDelegate {
         case dailyChallenge
         case normalScoreChase
     }
+
+    static func shouldSubmitDailyTableScore(
+        todayBest: Int,
+        dayID: String,
+        lastSubmittedDayID: String?,
+        lastSubmittedScore: Int
+    ) -> Bool {
+        guard todayBest > 0 else { return false }
+        guard let lastSubmittedDayID else { return true }
+        guard lastSubmittedDayID == dayID else { return true }
+        return todayBest > lastSubmittedScore
+    }
+
     private(set) var isAuthenticated = false
     private(set) var canPresentScoreChallenge = false
     private(set) var canPresentDailyActivity = false

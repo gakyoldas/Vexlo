@@ -1650,16 +1650,16 @@ final class GameScene: SKScene {
                     hasPresentedCeremony: self.hasPresentedRunThresholdCeremony
                 )
                 self.syncScores(applyThresholdScoreAwakening: false)
-                HapticsService.shared.playClear(clearedLineCount: clearedLineCount)
+                HapticsService.shared.playClear()
                 let chainAdvanced = self.engine.scoreEngine.combo > previousCombo && self.engine.scoreEngine.combo > 1
                 let shouldPlayComboReward = chainAdvanced && clearedLineCount > 1
                 if shouldPlayComboReward {
                     HapticsService.shared.playCombo()
                 }
                 if shouldPlayComboReward {
-                    AudioService.shared.play(self.engine.scoreEngine.combo >= 3 ? .comboX3Plus : .comboX2)
+                    AudioService.shared.play(.combo)
                 } else {
-                    AudioService.shared.play(.lineClear)
+                    AudioService.shared.play(.clear)
                 }
                 if !clearedCoords.isEmpty {
                     let completingPlacement = Set(placedCoords).intersection(clearedSet)
@@ -1987,12 +1987,6 @@ final class GameScene: SKScene {
             lastDailyCompletion = DailyChallengeService.shared.completeRun(dayID: dayID, score: engine.scoreEngine.score)
             if let completion = lastDailyCompletion {
                 AnalyticsService.shared.recordDailyChallengeCompleted(streak: completion.streakCount)
-                if !LaunchSupport.shared.isCaptureMode {
-                    GameCenterService.shared.reportDailyTableScore(
-                        todayBest: completion.todayBest,
-                        dayID: completion.dayID
-                    )
-                }
             }
         } else {
             let completedRuns = GameCenterService.shared.nextCompletedRunCount()
@@ -2372,11 +2366,11 @@ final class GameScene: SKScene {
 
     private func playOverlayResultAudioIfNeeded() {
         guard !engine.isDailyChallenge else {
-            AudioService.shared.play(.dailyComplete)
+            AudioService.shared.play(.bestScore)
             return
         }
         let earnedBest = engine.scoreEngine.score >= engine.scoreEngine.best && engine.scoreEngine.score > runStartBest
-        AudioService.shared.play(earnedBest ? .newBest : .gameOver)
+        AudioService.shared.play(earnedBest ? .bestScore : .fail)
     }
 
     private func applyCaptureModeIfNeeded() -> Bool {
@@ -2762,7 +2756,6 @@ final class GameScene: SKScene {
         alert.addAction(UIAlertAction(title: VexloStrings.Utility.startNewRun, style: .default) { [weak self] _ in
             guard let self else { return }
             self.isPresentingNewRunConfirmation = false
-            AudioService.shared.play(.startNewRunConfirm)
             self.hideUtilitySurface()
             self.clearPersistedLiveRun()
             self.beginSceneRun(mode: self.engine.runMode)
@@ -2797,7 +2790,6 @@ final class GameScene: SKScene {
     private func shareResult() {
         guard engine.isGameOver,
               !LaunchSupport.shared.isInternalCapture else { return }
-        AudioService.shared.play(.shareTap)
         let dailyRitualHeadline: String?
         if engine.isDailyChallenge {
             let dayID = engine.dailyChallengeDayID ?? DailyChallengeService.shared.currentDayID()
@@ -3075,7 +3067,6 @@ final class GameScene: SKScene {
 
     private func startDrag(piece: HexPiece, slot: Int, at point: CGPoint) {
         hideUtilitySurface()
-        AudioService.shared.play(.piecePickup)
         dragPiece = piece
         dragSlotIndex = slot
         dragAnchor = nil
@@ -3132,14 +3123,14 @@ final class GameScene: SKScene {
                 to: point, origin: gridOrigin, cols: cols, rows: rows
               ) else {
             HapticsService.shared.playInvalid()
-            AudioService.shared.play(.invalidPlace)
+            AudioService.shared.play(.fail)
             syncTray()
             return
         }
         let preview = engine.previewPlacementBundle(piece, at: anchor)
         guard preview.resolution.isLegal else {
             HapticsService.shared.playInvalid()
-            AudioService.shared.play(.invalidPlace)
+            AudioService.shared.play(.fail)
             syncTray()
             return
         }
@@ -3162,7 +3153,7 @@ final class GameScene: SKScene {
                 tier: preview.evaluation?.tier
             ).commitHaptic
         )
-        AudioService.shared.play(.validPlace)
+        AudioService.shared.play(.placement)
         handlePostPlacementFeedback(
             placedCoords: committed.placedCoordinates,
             pieceColor: piece.color,
